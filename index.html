@@ -338,26 +338,75 @@
             z-index: 210;
         }
 
+        /* ==== NUOVO: Stili "Powered By" ==== */
+        #powered-by-box {
+            position: fixed; /* Sempre visibile */
+            top: 6px;        /* Piccolo spazio dal bordo */
+            left: 6px;
+            z-index: 999;      /* Sopra tutto */
+            background: transparent; /* Sfondo trasparente */
+            border: none;            /* Bordo trasparente */
+            padding: 4px;
+            font-size: 10px;   /* Piccolo e leggibile (6px è illeggibile) */
+            font-weight: 600;
+            pointer-events: none; /* Non deve bloccare i click sottostanti */
+            
+            /* Animazioni */
+            animation: 
+                textGradient 5s ease infinite alternate,
+                textPulse 2s ease-in-out infinite alternate;
+            
+            /* Preparazione per l'animazione gradiente */
+            background-image: linear-gradient(to right, #3b82f6, #c026d3, #ef4444, #3b82f6);
+            background-size: 300% 100%; /* Gradiente largo per movimento */
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-fill-color: transparent;
+        }
+
+        @keyframes textGradient {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 100% 50%; }
+        }
+        
+        @keyframes textPulse {
+            0% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.8; }
+        }
+        /* ==== FINE Stili "Powered By" ==== */
+
     </style>
 </head>
 <body class="p-4 pt-0">
 
+    <!-- ==== NUOVO: Box "Powered By" ==== -->
+    <div id="powered-by-box">
+        Powered By Michele Rosati
+    </div>
+    <!-- ================================== -->
+
     <!-- ==== 1. HEADER APP (Modulo 4.1) ==== -->
     <header id="app-header" class="app-header p-4 mb-6">
-        <div class="flex items-center justify-between h-12">
-            <!-- Pulsante Indietro (visibile dinamicamente) -->
-            <button id="btn-back" class="app-header-btn flex items-center" style="visibility: hidden;">
-                <i data-lucide="chevron-left" class="w-5 h-5"></i>
-                <span id="btn-back-label">Indietro</span>
-            </button>
+        <!-- *** MODIFICA: Layout Grid a 3 colonne per centratura robusta *** -->
+        <div class="grid grid-cols-3 items-center h-12">
+            <!-- Colonna Sinistra: Pulsante Indietro -->
+            <div class="text-left">
+                <button id="btn-back" class="app-header-btn flex items-center" style="visibility: hidden;">
+                    <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                    <span id="btn-back-label">Indietro</span>
+                </button>
+            </div>
             
-            <!-- Titolo (centrale) -->
-            <h1 id="app-title" class="text-xl font-bold text-center absolute left-1/2 -translate-x-1/2">
+            <!-- Colonna Centrale: Titolo -->
+            <h1 id="app-title" class="text-xl font-bold text-center truncate"> <!-- Rimosso absolute/translate, aggiunto truncate -->
                 Rilievo Sinistri
             </h1>
             
-            <!-- Spaziatore (per centrare il titolo) -->
-            <div id="header-spacer" class="w-20"></div>
+            <!-- Colonna Destra: Spaziatore (vuoto, solo per layout) -->
+            <div></div>
+            <!-- *** FINE MODIFICA HEADER *** -->
         </div>
     </header>
 
@@ -824,7 +873,7 @@
         const appTitle = document.getElementById('app-title');
         const btnBack = document.getElementById('btn-back');
         const btnBackLabel = document.getElementById('btn-back-label');
-        const headerSpacer = document.getElementById('header-spacer');
+        // const headerSpacer = document.getElementById('header-spacer'); // RIMOSSO
 
         function navigateTo(screenId, context = {}) {
             console.log(`Navigazione a: ${screenId}`);
@@ -942,7 +991,7 @@
 
                 btnBackLabel.textContent = backLabel;
                 btnBack.style.visibility = 'visible';
-                headerSpacer.style.display = 'block';
+                // headerSpacer.style.display = 'block'; // RIMOSSO
                 
                 // Assicura che ci sia un solo listener
                 btnBack.removeEventListener('click', navigateBack);
@@ -951,7 +1000,7 @@
             } else {
                 // Siamo sulla Home
                 btnBack.style.visibility = 'hidden';
-                headerSpacer.style.display = 'none';
+                // headerSpacer.style.display = 'none'; // RIMOSSO
             }
         }
 
@@ -2976,3 +3025,4 @@
     </script>
 </body>
 </html>
+
