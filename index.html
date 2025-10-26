@@ -389,25 +389,23 @@
 
     <!-- ==== 1. HEADER APP (Modulo 4.1) ==== -->
     <header id="app-header" class="app-header p-4 mb-6">
-        <!-- *** MODIFICA: Layout Grid a 3 colonne per centratura robusta *** -->
-        <div class="grid grid-cols-3 items-center h-12">
-            <!-- Colonna Sinistra: Pulsante Indietro -->
-            <div class="text-left">
-                <button id="btn-back" class="app-header-btn flex items-center" style="visibility: hidden;">
+        <!-- *** MODIFICA: Layout a 2 righe per titolo esteso *** -->
+        <div class="flex flex-col">
+            <!-- Riga 1: Pulsante Indietro -->
+            <div class="h-8"> <!-- Altezza fissa per il pulsante -->
+                <button id="btn-back" class="app-header-btn flex items-center -ml-2" style="visibility: hidden;"> <!-- Rimuovo padding laterale per allineare -->
                     <i data-lucide="chevron-left" class="w-5 h-5"></i>
                     <span id="btn-back-label">Indietro</span>
                 </button>
             </div>
             
-            <!-- Colonna Centrale: Titolo -->
-            <h1 id="app-title" class="text-xl font-bold text-center truncate"> <!-- Rimosso absolute/translate, aggiunto truncate -->
+            <!-- Riga 2: Titolo -->
+            <!-- Rimosso truncate, text-center. Aggiunto text-left e mt-1 -->
+            <h1 id="app-title" class="text-xl font-bold text-left mt-1"> 
                 Rilievo Sinistri
             </h1>
-            
-            <!-- Colonna Destra: Spaziatore (vuoto, solo per layout) -->
-            <div></div>
-            <!-- *** FINE MODIFICA HEADER *** -->
         </div>
+        <!-- *** FINE MODIFICA HEADER *** -->
     </header>
 
     <!-- Contenitore Principale -->
@@ -872,7 +870,7 @@
         const screens = document.querySelectorAll('.screen');
         const appTitle = document.getElementById('app-title');
         const btnBack = document.getElementById('btn-back');
-        const btnBackLabel = document.getElementById('btn-back-label');
+        const btnBack-label = document.getElementById('btn-back-label');
         // const headerSpacer = document.getElementById('header-spacer'); // RIMOSSO
 
         function navigateTo(screenId, context = {}) {
@@ -3025,4 +3023,5 @@
     </script>
 </body>
 </html>
+
 
