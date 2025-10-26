@@ -1415,19 +1415,31 @@
                     // Conteggio foto persona
                     const personPhotosCount = await db.photos.where({ reportId: currentReportId, category: 'doc_persona', associatedId: person.id }).count();
                     
+                    // *** INIZIO MODIFICA: Aggiunto bottone elimina passeggero ***
                     peopleHtml += `
                         <li class="flex justify-between items-center">
                             <span class="flex items-center">
                                 <i data-lucide="${person.type === 'conducente' ? 'user-cog' : 'user'}" class="w-4 h-4 mr-2 ${person.type === 'conducente' ? 'text-blue-700' : 'text-gray-600'}"></i>
                                 ${person.label} ${person.type === 'conducente' ? '' : `(${person.type})`}
                             </span>
-                            <button class="neum-btn btn-goto-small btn-goto-person" data-person-id="${person.id}" data-label="${person.label}">
-                                <i data-lucide="file-text" class="w-4 h-4"></i>
-                                <!-- Contatore -->
-                                ${personPhotosCount > 0 ? `<span class="photo-counter">${personPhotosCount}</span>` : ''}
-                            </button>
+                            
+                            <div class="flex items-center space-x-2">
+                                <!-- Bottone Esistente (Documenti) -->
+                                <button class="neum-btn btn-goto-small btn-goto-person" data-person-id="${person.id}" data-label="${person.label}" title="Gestisci Documenti">
+                                    <i data-lucide="file-text" class="w-4 h-4"></i>
+                                    ${personPhotosCount > 0 ? `<span class="photo-counter">${personPhotosCount}</span>` : ''}
+                                </button>
+
+                                <!-- NUOVO: Bottone Elimina (solo per passeggeri) -->
+                                ${person.type === 'passeggero' ? `
+                                <button class="neum-btn btn-goto-small neum-btn-danger btn-delete-passenger" data-person-id="${person.id}" data-label="${person.label}" title="Elimina Passeggero">
+                                    <i data-lucide="user-minus" class="w-4 h-4"></i>
+                                </button>
+                                ` : ''}
+                            </div>
                         </li>
                     `;
+                    // *** FINE MODIFICA ***
                 }
                 peopleHtml += '</ul>';
                 
@@ -1476,6 +1488,34 @@
                     navigateTo('schermata-foto-persona', { personId: id, title: label });
                 });
             });
+
+            // *** INIZIO MODIFICA: Aggiunto listener per eliminare passeggero ***
+            vehiclesList.querySelectorAll('.btn-delete-passenger').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    e.stopPropagation(); // Evita che il click si propaghi
+                    const id = parseInt(e.currentTarget.dataset.personId);
+                    const label = e.currentTarget.dataset.label;
+
+                    if (await showConfirmModal(`Sei sicuro di voler eliminare '${label}'? \n\nVerranno eliminati anche tutti i documenti e le foto associate a questa persona.`, "Conferma Eliminazione")) {
+                        try {
+                            // 1. Elimina la persona
+                            await db.people.delete(id);
+                            
+                            // 2. Elimina le foto associate
+                            await db.photos.where({ reportId: currentReportId, category: 'doc_persona', associatedId: id }).delete();
+                            
+                            // 3. Ricarica la sezione veicoli
+                            await loadDashboardVehicles(currentReportId);
+                            lucide.createIcons(); // Re-render icons
+
+                        } catch (error) {
+                            console.error("Errore eliminazione passeggero:", error);
+                            showModal("Impossibile eliminare il passeggero.", "Errore");
+                        }
+                    }
+                });
+            });
+            // *** FINE MODIFICA ***
 
             // Listener per Aggiungi Passeggero
             vehiclesList.querySelectorAll('.btn-add-passenger').forEach(btn => {
@@ -3023,7 +3063,3 @@
     </script>
 </body>
 </html>
-
-
-
-
