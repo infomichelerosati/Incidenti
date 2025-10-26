@@ -1,0 +1,2862 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PWA Rilievo Sinistri</title>
+    
+    <link rel="manifest" href="./manifest.json">
+    
+    <!-- Caricamento CDN -->
+    <script src="https://cdn.tailwindcss.com/"></script>
+    <script src="https://unpkg.com/dexie@3/dist/dexie.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- LIBRERIE PER ESPORTAZIONE -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.0/FileSaver.min.js"></script>
+    <!-- NUOVA LIBRERIA PER PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <!-- Icone PWA per iOS -->
+    <link rel="apple-touch-icon" sizes="192x192" href="./icon-192.png">
+    
+    <!-- Stile Neumorphism Personalizzato -->
+    <style>
+        :root {
+            --bg-color: #e0e5ec;
+            --text-color: #374151;
+            --text-light: #6b7280;
+            --primary-color: #3b82f6; /* Blu */
+            --danger-color: #ef4444; /* Rosso */
+            --pdf-color: #c026d3; /* NUOVO: Viola per PDF */
+        }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+        }
+        
+        /* Stile Neumorphism per Schede, Bottoni, Input */
+        .neum-card {
+            background-color: var(--bg-color);
+            border-radius: 20px;
+            box-shadow: 8px 8px 16px #bcbec3, -8px -8px 16px #ffffff;
+        }
+
+        .neum-card-inset {
+            background-color: var(--bg-color);
+            border-radius: 20px;
+            box-shadow: inset 6px 6px 12px #c5c9cf, inset -6px -6px 12px #ffffff;
+        }
+        
+        .neum-btn {
+            background-color: var(--bg-color);
+            border: none;
+            border-radius: 10px;
+            padding: 12px 20px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 6px 6px 12px #c5c9cf, -6px -6px 12px #ffffff;
+            transition: all 0.2s ease-in-out;
+            color: var(--text-light);
+            /* Aggiunto per allineare i contatori */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .neum-btn:hover {
+            box-shadow: 4px 4px 8px #c5c9cf, -4px -4px 8px #ffffff;
+        }
+        .neum-btn:active, .neum-btn.active {
+            box-shadow: inset 4px 4px 8px #c5c9cf, inset -4px -4px 8px #ffffff;
+            color: var(--primary-color);
+        }
+
+        .neum-btn-primary {
+            color: var(--primary-color);
+        }
+        .neum-btn-danger {
+            color: var(--danger-color);
+        }
+        /* NUOVO: Stile per bottone PDF */
+        .neum-btn-pdf {
+            color: var(--pdf-color);
+        }
+        /* Stile per i bottoni icona (anche PDF) */
+        .neum-icon-btn.neum-btn-pdf:active {
+            color: var(--pdf-color);
+        }
+
+        .neum-input {
+            border: none;
+            background-color: var(--bg-color);
+            border-radius: 10px;
+            padding: 12px 16px;
+            box-shadow: inset 4px 4px 8px #c5c9cf, inset -4px -4px 8px #ffffff;
+            width: 100%;
+        }
+        .neum-input:focus {
+            outline: none;
+            box-shadow: inset 6px 6px 12px #c5c9cf, inset -6px -6px 12px #ffffff;
+        }
+
+        .neum-icon-btn {
+            width: 44px;
+            height: 44px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            flex-shrink: 0; /* Impedisce al bottone icona di stringersi */
+        }
+        
+        /* Stile Header Fisso */
+        .app-header {
+            background-color: var(--bg-color);
+            border-bottom-left-radius: 20px;
+            border-bottom-right-radius: 20px;
+            box-shadow: 8px 8px 16px #bcbec3;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        
+        .app-header-btn {
+            border: none;
+            background: none;
+            color: var(--primary-color);
+            font-weight: 600;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 10px;
+        }
+         .app-header-btn:active {
+            background-color: #d1d9e6; /* Sfondo leggermente premuto */
+         }
+        
+        /* Nascondi Schermate */
+        .screen {
+            display: none;
+        }
+        .screen.active {
+            display: block;
+        }
+        
+        /* Stile per selettore foto */
+        .photo-thumbnail {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: inset 4px 4px 8px #c5c9cf, inset -4px -4px 8px #ffffff;
+        }
+        .photo-thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .delete-photo-btn {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background-color: rgba(0,0,0,0.6);
+            border-radius: 50%;
+            padding: 2px;
+            line-height: 0;
+            cursor: pointer;
+        }
+
+        /* Modal Generico */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+
+        /* ==== STILI CONTATORI FOTO ==== */
+        .photo-counter {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 700;
+            background-color: var(--danger-color);
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            margin-left: 6px; /* Spazio tra icona e contatore */
+        }
+        .photo-counter-dash {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 8px;
+            min-width: 22px;
+            height: 22px;
+            padding: 0 6px;
+            margin-left: auto; /* Spinge il contatore a destra */
+        }
+        /* Stile per i bottoni piccoli nella dashboard */
+        .btn-goto-small {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 8px; /* Più piccoli */
+            font-size: 12px;
+        }
+
+        /* ==== STILI SCHERMATA RIEPILOGO ==== */
+        .summary-section {
+            background-color: var(--bg-color);
+            border-radius: 15px;
+            padding: 16px;
+            box-shadow: 6px 6px 12px #c5c9cf, -6px -6px 12px #ffffff;
+        }
+        .summary-title {
+            font-size: 1.25rem; /* text-xl */
+            font-weight: 700;
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+        }
+         .summary-subtitle {
+            font-size: 1.1rem; /* text-lg */
+            font-weight: 600;
+            color: var(--text-color);
+            margin-top: 16px;
+            margin-bottom: 8px;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 8px;
+            padding: 8px;
+            background-color: var(--bg-color);
+            border-radius: 10px;
+            box-shadow: inset 4px 4px 8px #c5c9cf, inset -4px -4px 8px #ffffff;
+        }
+        .summary-thumbnail {
+            width: 100%;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 8px;
+            box-shadow: 4px 4px 8px #c5c9cf, -4px -4px 8px #ffffff;
+        }
+        .summary-data-pair {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid #d1d9e6;
+        }
+        .summary-data-pair:last-child {
+            border-bottom: none;
+        }
+        .summary-data-pair span:first-child {
+            font-weight: 500;
+            color: var(--text-light);
+        }
+        .summary-data-pair span:last-child {
+            font-weight: 600;
+        }
+        .summary-list li {
+            padding: 4px 0;
+            font-weight: 500;
+        }
+        
+        /* NUOVO: Stile per Textarea Esportazione */
+        #export-legenda-text {
+            font-family: 'Courier New', Courier, monospace;
+            resize: vertical;
+            height: 250px;
+        }
+
+    </style>
+</head>
+<body class="p-4 pt-0">
+
+    <!-- ==== 1. HEADER APP (Modulo 4.1) ==== -->
+    <header id="app-header" class="app-header p-4 mb-6">
+        <div class="flex items-center justify-between h-12">
+            <!-- Pulsante Indietro (visibile dinamicamente) -->
+            <button id="btn-back" class="app-header-btn flex items-center" style="visibility: hidden;">
+                <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                <span id="btn-back-label">Indietro</span>
+            </button>
+            
+            <!-- Titolo (centrale) -->
+            <h1 id="app-title" class="text-xl font-bold text-center absolute left-1/2 -translate-x-1/2">
+                Rilievo Sinistri
+            </h1>
+            
+            <!-- Spaziatore (per centrare il titolo) -->
+            <div id="header-spacer" class="w-20"></div>
+        </div>
+    </header>
+
+    <!-- Contenitore Principale -->
+    <main>
+
+        <!-- ==== 2. SCHERMATA 1: HOME (Modulo 4.2) ==== -->
+        <div id="schermata-home" class="screen active space-y-6">
+            <button id="btn-new-report" class="neum-btn neum-btn-primary w-full text-lg py-5 flex items-center justify-center">
+                <i data-lucide="plus-circle" class="w-6 h-6 mr-2"></i>
+                Nuova Acquisizione
+            </button>
+            
+            <div class="neum-card-inset p-4">
+                <h2 class="text-lg font-bold mb-4 text-center">Rilievi in Corso</h2>
+                <div id="elenco-rilievi" class="space-y-4">
+                    <!-- I rilievi verranno caricati qui... -->
+                </div>
+            </div>
+        </div>
+
+
+        <!-- ==== 3. SCHERMATA 2: WIZARD (Modulo 4.3) ==== -->
+        <div id="schermata-wizard" class="screen space-y-6">
+            <div class="neum-card p-6 space-y-5">
+                <h2 class="text-xl font-bold text-center mb-4">Impostazione Rilievo</h2>
+                
+                <div>
+                    <label for="num-veicoli" class="block text-sm font-medium mb-2">Quanti veicoli coinvolti? (es. A, B)</label>
+                    <input type="number" id="num-veicoli" min="1" value="2" class="neum-input">
+                </div>
+                
+                <div>
+                    <label for="num-pedoni" class="block text-sm font-medium mb-2">Quanti pedoni coinvolti?</label>
+                    <input type="number" id="num-pedoni" min="0" value="0" class="neum-input">
+                </div>
+                
+                <!-- NUOVO CAMPO TESTIMONI -->
+                <div>
+                    <label for="num-testimoni" class="block text-sm font-medium mb-2">Quanti testimoni presenti?</label>
+                    <input type="number" id="num-testimoni" min="0" value="0" class="neum-input">
+                </div>
+                
+                <hr class="border-gray-300 my-4">
+                
+                <h3 class="font-semibold text-lg">Elementi Planimetrici</h3>
+                
+                <div>
+                    <label for="num-urto" class="block text-sm font-medium mb-2">Quanti Punti d'Urto? (PU)</label>
+                    <input type="number" id="num-urto" min="0" value="0" class="neum-input">
+                </div>
+                
+                <div>
+                    <label for="num-frenate" class="block text-sm font-medium mb-2">Quante tracce di frenata? (F)</label>
+                    <input type="number" id="num-frenate" min="0" value="0" class="neum-input">
+                </div>
+                
+                <div>
+                    <label for="num-detriti" class="block text-sm font-medium mb-2">Quanti oggetti/detriti? (O)</label>
+                    <input type="number" id="num-detriti" min="0" value="0" class="neum-input">
+                </div>
+                
+                <div class="flex items-center justify-between pt-2">
+                    <label for="has-infra" class="text-sm font-medium">Ci sono danni a infrastrutture?</label>
+                    <input type="checkbox" id="has-infra" class="h-6 w-6 rounded text-blue-600 focus:ring-blue-500 border-gray-300">
+                </div>
+
+            </div>
+            
+            <button id="btn-save-wizard" class="neum-btn neum-btn-primary w-full text-lg py-5 flex items-center justify-center">
+                <i data-lucide="arrow-right-circle" class="w-6 h-6 mr-2"></i>
+                Inizia Acquisizione
+            </button>
+        </div>
+
+
+        <!-- ==== 4. SCHERMATA 3: DASHBOARD RILIEVO (Modulo 4.4) ==== -->
+        <div id="schermata-dashboard" class="screen space-y-6">
+            
+            <!-- Info Rilievo -->
+            <div class="neum-card-inset p-4 text-center">
+                <h2 class="text-xl font-bold" id="dashboard-title">Rilievo #1</h2>
+                <!-- NUOVO: Input per data/ora -->
+                <div class="mt-2">
+                    <label for="report-datetime" class="block text-sm font-medium mb-1 text-gray-600">Data e Ora Sinistro</label>
+                    <input type="datetime-local" id="report-datetime" class="neum-input w-full max-w-xs mx-auto text-center">
+                </div>
+            </div>
+
+            <!-- Modulo 4.5: Sezione Veicoli e Persone -->
+            <div class="neum-card p-5">
+                <h3 class="text-lg font-bold mb-4 flex items-center">
+                    <i data-lucide="truck" class="w-5 h-5 mr-2 text-blue-600"></i>
+                    Veicoli e Persone
+                </h3>
+                <div id="dashboard-vehicles-list" class="space-y-3">
+                    <!-- Contenuto generato dinamicamente -->
+                </div>
+            </div>
+            
+            <!-- Modulo 4.9: Sezione Infrastrutture e Pedoni -->
+            <div class="neum-card p-5">
+                <h3 class="text-lg font-bold mb-4 flex items-center">
+                    <i data-lucide="traffic-cone" class="w-5 h-5 mr-2 text-orange-600"></i>
+                    Pedoni, Testimoni e Infrastrutture <!-- MODIFICATO -->
+                </h3>
+                <div id="dashboard-infra-pedoni-list" class="space-y-3">
+                    <!-- Contenuto generato dinamicamente -->
+                </div>
+            </div>
+
+            <!-- Modulo 4.8: Sezione Foto Scena -->
+            <div class="neum-card p-5">
+                <h3 class="text-lg font-bold mb-4 flex items-center">
+                    <i data-lucide="camera" class="w-5 h-5 mr-2 text-purple-600"></i>
+                    Foto della Scena
+                </h3>
+                <!-- NOTA: Il contatore qui viene aggiunto da JS (loadDashboard) -->
+                <button id="btn-goto-scene-photos" class="neum-btn w-full">
+                    <i data-lucide="aperture" class="w-5 h-5 mr-2"></i>
+                    Gestisci Foto Scena
+                </button>
+            </div>
+
+            <!-- Modulo 4.10: Sezione Rilievi Planimetrici -->
+            <div class="neum-card p-5">
+                <h3 class="text-lg font-bold mb-4 flex items-center">
+                    <i data-lucide="ruler" class="w-5 h-5 mr-2 text-green-700"></i>
+                    Rilievi Planimetrici
+                </h3>
+                
+                <div class="space-y-4">
+                    <button id="btn-goto-points" class="neum-btn w-full">
+                        <i data-lucide="map-pin" class="w-5 h-5 mr-2"></i>
+                        Gestisci Punti (PF, A1...)
+                    </button>
+                    
+                    <button id="btn-goto-measures" class="neum-btn w-full">
+                        <i data-lucide="tape" class="w-5 h-5 mr-2"></i>
+                        Inserisci Misure
+                    </button>
+
+                    <!-- Legenda Dinamica (Modulo 4.12) -->
+                    <div id="dashboard-legenda" class="neum-card-inset p-4 mt-4">
+                        <h4 class="font-semibold mb-2 text-center">Legenda Misure Mancanti</h4>
+                        <ul id="dashboard-legenda-list" class="space-y-1 text-sm text-gray-700">
+                            <!-- Contenuto generato dinamicamente -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pulsante Completa Rilievo (ora naviga al riepilogo) -->
+            <button id="btn-complete-report" class="neum-btn neum-btn-primary w-full text-lg py-5 mt-8">
+                <i data-lucide="check-circle" class="w-6 h-6 mr-2"></i>
+                Completa Rilievo
+            </button>
+        </div>
+
+
+        <!-- ==== 5. SCHERMATA 4: FOTO VEICOLO (Modulo 4.6) ==== -->
+        <div id="schermata-foto-veicolo" class="screen space-y-6">
+            <h2 class="text-xl font-bold text-center" id="vehicle-photo-title">Gestione Veicolo A</h2>
+            
+            <!-- Foto Danni -->
+            <div class="neum-card p-5">
+                <h3 class="text-lg font-bold mb-4">Foto Danni</h3>
+                <div id="vehicle-damage-photos" class="grid grid-cols-4 gap-2 mb-4">
+                    <!-- Foto caricate qui -->
+                </div>
+                <label class="neum-btn neum-btn-primary w-full text-center cursor-pointer">
+                    <i data-lucide="camera" class="w-5 h-5 inline-block mr-2"></i>
+                    Scatta/Carica Foto Danni
+                    <input type="file" id="input-damage-photo" class="hidden" accept="image/*" multiple>
+                </label>
+            </div>
+            
+            <!-- Foto Documenti Veicolo -->
+            <div class="neum-card p-5">
+                <h3 class="text-lg font-bold mb-4">Documenti (Libretto, Assicurazione)</h3>
+                <div id="vehicle-doc-photos" class="grid grid-cols-4 gap-2 mb-4">
+                    <!-- Foto caricate qui -->
+                </div>
+                <label class="neum-btn w-full text-center cursor-pointer">
+                    <i data-lucide="file-text" class="w-5 h-5 inline-block mr-2"></i>
+                    Scatta/Carica Documenti
+                    <input type="file" id="input-vehicle-doc-photo" class="hidden" accept="image/*" multiple>
+                </label>
+            </div>
+        </div>
+
+        
+        <!-- ==== 6. SCHERMATA 5: FOTO PERSONA (Modulo 4.7) ==== -->
+        <div id="schermata-foto-persona" class="screen space-y-6">
+            <h2 class="text-xl font-bold text-center" id="person-photo-title">Gestione Persona</h2>
+            
+            <div class="neum-card p-5">
+                <h3 class="text-lg font-bold mb-4">Documenti (Patente, C.I.)</h3>
+                <div id="person-doc-photos" class="grid grid-cols-4 gap-2 mb-4">
+                    <!-- Foto caricate qui -->
+                </div>
+                <label class="neum-btn neum-btn-primary w-full text-center cursor-pointer">
+                    <i data-lucide="user" class="w-5 h-5 inline-block mr-2"></i>
+                    Scatta/Carica Documenti
+                    <input type="file" id="input-person-doc-photo" class="hidden" accept="image/*" multiple>
+                </label>
+            </div>
+        </div>
+
+
+        <!-- ==== 7. SCHERMATA 6: FOTO SCENA/INFRASTRUTTURE/PEDONI (Modulo 4.8/4.9) ==== -->
+        <div id="schermata-foto-generiche" class="screen space-y-6">
+            <h2 class="text-xl font-bold text-center" id="generic-photo-title">Gestione Foto</h2>
+            
+            <div class="neum-card p-5">
+                <h3 class="text-lg font-bold mb-4" id="generic-photo-subtitle">Foto</h3>
+                <div id="generic-photos-grid" class="grid grid-cols-4 gap-2 mb-4">
+                    <!-- Foto caricate qui -->
+                </div>
+                <label class="neum-btn neum-btn-primary w-full text-center cursor-pointer">
+                    <i data-lucide="camera" class="w-5 h-5 inline-block mr-2"></i>
+                    Scatta/Carica Foto
+                    <input type="file" id="input-generic-photo" class="hidden" accept="image/*" multiple>
+                </label>
+            </div>
+        </div>
+
+
+        <!-- ==== 8. SCHERMATA 7: GESTIONE PUNTI (Modulo 4.11) ==== -->
+        <div id="schermata-punti" class="screen space-y-6">
+            <h2 class="text-xl font-bold text-center">Gestione Punti Planimetrici</h2>
+            
+            <!-- Aggiunta Punti Fissi (PF) -->
+            <div class="neum-card p-5">
+                <h3 class="text-lg font-bold mb-4">Aggiungi Punto Fisso (PF)</h3>
+                <div class="flex space-x-2">
+                    <input type="text" id="input-pf-label" placeholder="Es. PF1, Tombino, Palo..." class="neum-input flex-1">
+                    <button id="btn-add-pf" class="neum-icon-btn neum-btn-primary">
+                        <i data-lucide="plus" class="w-6 h-6"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Elenco Punti -->
+            <div class="neum-card-inset p-4">
+                <h3 class="text-lg font-bold mb-4 text-center">Punti Definiti</h3>
+                <div id="points-list" class="space-y-3">
+                    <!-- Lista punti generata qui -->
+                </div>
+            </div>
+        </div>
+        
+        
+        <!-- ==== 9. SCHERMATA 8: INSERIMENTO MISURE (Modulo 4.12) ==== -->
+        <div id="schermata-misure" class="screen space-y-6">
+            <h2 class="text-xl font-bold text-center">Inserimento Misure</h2>
+            
+            <!-- Form Inserimento -->
+            <div class="neum-card p-5 space-y-4">
+                <h3 class="text-lg font-bold text-center">Nuova Misura</h3>
+                
+                <div>
+                    <label for="select-p1" class="block text-sm font-medium mb-2">Da Punto:</label>
+                    <select id="select-p1" class="neum-input"></select>
+                </div>
+                
+                <div>
+                    <label for="select-p2" class="block text-sm font-medium mb-2">A Punto:</label>
+                    <select id="select-p2" class="neum-input"></select>
+                </div>
+                
+                <div>
+                    <label for="input-distance" class="block text-sm font-medium mb-2">Distanza (in metri):</label>
+                    <input type="number" id="input-distance" step="0.01" placeholder="Es. 12.34" class="neum-input">
+                </div>
+                
+                <button id="btn-save-measure" class="neum-btn neum-btn-primary w-full py-4">
+                    <i data-lucide="save" class="w-5 h-5 inline-block mr-2"></i>
+                    Salva Misura
+                </button>
+            </div>
+            
+            <!-- Elenco Misure Inserite -->
+            <div class="neum-card-inset p-4">
+                <h3 class="text-lg font-bold mb-4 text-center">Misure Inserite</h3>
+                <div id="measures-list" class="space-y-3">
+                    <!-- Lista misure inserite -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ==== 10. SCHERMATA RIEPILOGO ==== -->
+        <div id="schermata-riepilogo" class="screen space-y-6">
+            <h2 class="text-xl font-bold text-center">Riepilogo Rilievo</h2>
+            
+            <!-- Contenitore per il riepilogo dinamico -->
+            <div id="summary-content" class="neum-card-inset p-4 md:p-6 space-y-6">
+                <!-- Il contenuto verrà generato da JS -->
+                <p class="text-center text-gray-500">Caricamento dati...</p>
+            </div>
+            
+            <!-- Pulsante di conferma finale -->
+            <button id="btn-confirm-complete" class="neum-btn neum-btn-primary w-full text-lg py-5 mt-4">
+                <i data-lucide="check-check" class="w-6 h-6 mr-2"></i>
+                Conferma e Completa
+            </button>
+        </div>
+
+    </main>
+    
+    <!-- ==== MODAL GENERICO ==== -->
+    <div id="modal-overlay" class="modal-overlay">
+        <div class="neum-card p-6 w-11/12 max-w-sm modal-content">
+            <h3 id="modal-title" class="text-lg font-bold mb-4 text-center">Conferma</h3>
+            <p id="modal-message" class="text-center mb-6">Sei sicuro?</p>
+            <div id="modal-alert-buttons" class="flex justify-center">
+                <button id="modal-ok-btn" class="neum-btn neum-btn-primary w-full">OK</button>
+            </div>
+            <div id="modal-confirm-buttons" class="flex gap-4">
+                <button id="modal-cancel-btn" class="neum-btn w-1/2">Annulla</button>
+                <button id="modal-confirm-btn" class="neum-btn neum-btn-primary w-1/2">Conferma</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ==== NUOVO: MODAL ESPORTA LEGENDA ==== -->
+    <div id="modal-export-legenda" class="modal-overlay">
+        <div class="neum-card p-6 w-11/12 max-w-lg modal-content space-y-4">
+            <h3 class="text-lg font-bold mb-4 text-center">Legenda Misure Copiabile</h3>
+            <p class="text-sm text-center text-gray-600">Questo testo è formattato per essere incollato in un report o un'email.</p>
+            <textarea id="export-legenda-text" class="neum-input w-full" readonly></textarea>
+            <div class="flex gap-4">
+                <button id="modal-export-close-btn" class="neum-btn w-1/2">Chiudi</button>
+                <button id="modal-export-copy-btn" class="neum-btn neum-btn-primary w-1/2">
+                    <i data-lucide="clipboard" class="w-4 h-4 mr-2"></i>Copia
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==== NUOVO: MODAL ANTEPRIMA PDF ==== -->
+    <div id="modal-pdf-preview" class="modal-overlay">
+        <!-- Aggiungo classi per renderlo grande -->
+        <div class="neum-card modal-content w-11/12 h-5/6 max-w-4xl flex flex-col">
+            <!-- Header del Modal -->
+            <div class="flex justify-between items-center p-4 border-b border-gray-300 flex-shrink-0">
+                <h3 class="text-lg font-bold">Anteprima PDF</h3>
+                <button id="modal-pdf-close-btn" class="neum-icon-btn neum-btn-danger">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <!-- Contenuto (Iframe) -->
+            <div class="flex-1 p-2 bg-gray-500 rounded-b-2xl">
+                <iframe id="pdf-iframe" class="w-full h-full border-0 rounded-lg" src=""></iframe>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==== NUOVO: MODAL LIGHTBOX FOTO ==== -->
+    <div id="modal-lightbox" class="modal-overlay" style="z-index: 200; background-color: rgba(0, 0, 0, 0.85); padding: 0;">
+        <button id="lightbox-close-btn" class="neum-icon-btn neum-btn-danger" style="position: fixed; top: 20px; right: 20px; z-index: 202; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">
+            <i data-lucide="x" class="w-6 h-6"></i>
+        </button>
+        <!-- Contenitore per l'immagine, permette lo scroll/pan se l'immagine è zoomata -->
+        <div class="w-full h-full flex items-center justify-center p-4">
+             <img id="lightbox-image" src="" alt="Anteprima foto" class="max-w-full max-h-full rounded-lg shadow-2xl" style="object-fit: contain;">
+        </div>
+    </div>
+
+
+    <script type="module">
+        // Import da CDN
+        const { Dexie } = window;
+        const { lucide } = window;
+        // IMPORT PER ESPORTAZIONE
+        const { JSZip } = window;
+        const { saveAs } = window;
+        // La libreria jsPDF viene caricata globalmente in window.jspdf
+        
+        // --- 1. Definizione Database (Modulo 2) ---
+        const db = new Dexie('SinistriDB');
+
+        db.version(5).stores({
+            reports: '++id, dateTime, status', // Tabella Rilievi
+            vehicles: '++id, reportId, label', // Veicoli (A, B...)
+            people: '++id, reportId, vehicleId, type', // Persone (vehicleId=0 per pedoni)
+            infrastructure: '++id, reportId, description', // Danni infrastrutture
+            photos: '++id, reportId, category, associatedId', // Foto (category: 'danno', 'doc_veicolo', 'doc_persona', 'scena', 'infra', 'pedone')
+            
+            // Modulo Planimetria
+            measurePoints: '++id, reportId, [reportId+label], type, associatedVehicleId, isGenerated', // Punti (Indice corretto: [reportId+label])
+            measurements: '++id, reportId, [reportId+p1_label+p2_label], p1_label, p2_label, distance', // Misure inserite
+            suggestedMeasurements: '++id, reportId, [reportId+p1_label+p2_label], p1_label, p2_label, status, type' // Legenda (status: 'pending', 'completed')
+        
+        }).upgrade(tx => {
+            console.log("Database aggiornato alla v5 (Schema Unico e Corretto).");
+        });
+
+
+        console.log("Database Dexie 'SinistriDB' inizializzato.");
+
+        // --- 2. Stato Applicazione ---
+        let currentReportId = null;
+        let currentPhotoContext = {
+            category: null,      // 'danno', 'doc_veicolo', 'doc_persona', 'scena', 'infra', 'pedone'
+            associatedId: null   // ID del veicolo, persona, o 0 per 'scena'/'infra'
+        };
+        // Stack per la navigazione
+        let navigationStack = ['schermata-home'];
+        
+        // Array per tenere traccia degli URL delle anteprime per pulizia memoria
+        let summaryObjectUrls = [];
+
+
+        // --- 3. Utility Navigazione (Modulo 4.1) ---
+        const screens = document.querySelectorAll('.screen');
+        const appTitle = document.getElementById('app-title');
+        const btnBack = document.getElementById('btn-back');
+        const btnBackLabel = document.getElementById('btn-back-label');
+        const headerSpacer = document.getElementById('header-spacer');
+
+        function navigateTo(screenId, context = {}) {
+            console.log(`Navigazione a: ${screenId}`);
+            
+            // Aggiorna stack
+            if (screenId !== navigationStack[navigationStack.length - 1]) {
+                navigationStack.push(screenId);
+            }
+
+            // Mostra/Nascondi schermate
+            screens.forEach(s => s.classList.toggle('active', s.id === screenId));
+            
+            // Aggiorna Header
+            updateHeader();
+            
+            // Logica specifica della schermata
+            switch(screenId) {
+                case 'schermata-home':
+                    loadHomeScreen();
+                    appTitle.textContent = 'Rilievo Sinistri';
+                    break;
+                case 'schermata-wizard':
+                    appTitle.textContent = 'Nuovo Rilievo';
+                    break;
+                case 'schermata-dashboard':
+                    loadDashboard(currentReportId);
+                    appTitle.textContent = `Rilievo #${currentReportId}`;
+                    break;
+                case 'schermata-foto-veicolo':
+                    appTitle.textContent = context.title || 'Foto Veicolo';
+                    loadVehiclePhotoScreen(context.vehicleId, context.title);
+                    break;
+                case 'schermata-foto-persona':
+                    appTitle.textContent = context.title || 'Foto Persona';
+                    loadPersonPhotoScreen(context.personId, context.title);
+                    break;
+                case 'schermata-foto-generiche':
+                    appTitle.textContent = context.title || 'Foto Scena';
+                    loadGenericPhotoScreen(context.category, context.associatedId, context.title, context.subtitle);
+                    break;
+                case 'schermata-punti':
+                    appTitle.textContent = 'Gestione Punti';
+                    loadPointsScreen();
+                    break;
+                case 'schermata-misure':
+                    appTitle.textContent = 'Inserimento Misure';
+                    loadMeasuresScreen();
+                    break;
+                case 'schermata-riepilogo':
+                    appTitle.textContent = 'Riepilogo Rilievo';
+                    loadSummaryScreen(currentReportId);
+                    break;
+            }
+            
+            // Renderizza icone Lucide (necessario dopo ogni cambio UI)
+            lucide.createIcons();
+        }
+        
+        // Funzione per pulire gli URL delle anteprime
+        function revokeSummaryUrls() {
+            console.log(`Pulizia di ${summaryObjectUrls.length} URL oggetto...`);
+            summaryObjectUrls.forEach(url => URL.revokeObjectURL(url));
+            summaryObjectUrls = [];
+        }
+
+        function navigateBack() {
+            if (navigationStack.length > 1) {
+                
+                // *** MODIFICATO: Pulisci URL anche uscendo dalle schermate foto ***
+                const currentScreenId = navigationStack[navigationStack.length - 1];
+                if (currentScreenId === 'schermata-riepilogo' ||
+                    currentScreenId === 'schermata-foto-veicolo' ||
+                    currentScreenId === 'schermata-foto-persona' ||
+                    currentScreenId === 'schermata-foto-generiche') 
+                {
+                    revokeSummaryUrls();
+                }
+
+                navigationStack.pop(); // Rimuovi schermata corrente
+                const previousScreenId = navigationStack[navigationStack.length - 1]; // Prendi la precedente
+                
+                // Rimuoviamo il listener per evitare doppioni
+                btnBack.removeEventListener('click', navigateBack); 
+                
+                // Naviga "silenziosamente" (senza pushare nello stack)
+                screens.forEach(s => s.classList.toggle('active', s.id === previousScreenId));
+                updateHeader();
+                
+                // Ricarica i dati della schermata precedente
+                switch(previousScreenId) {
+                    case 'schermata-home':
+                        loadHomeScreen();
+                        appTitle.textContent = 'Rilievo Sinistri';
+                        break;
+                    case 'schermata-dashboard':
+                        loadDashboard(currentReportId);
+                        appTitle.textContent = `Rilievo #${currentReportId}`;
+                        break;
+                }
+                lucide.createIcons();
+            }
+        }
+        
+        function updateHeader() {
+            if (navigationStack.length > 1) {
+                const currentScreenId = navigationStack[navigationStack.length - 1];
+                let backLabel = "Indietro";
+                
+                if (currentScreenId.startsWith('schermata-foto') || 
+                    currentScreenId === 'schermata-punti' || 
+                    currentScreenId === 'schermata-misure' ||
+                    currentScreenId === 'schermata-riepilogo'
+                    ) {
+                    backLabel = "Dashboard";
+                } else if (currentScreenId === 'schermata-dashboard' || currentScreenId === 'schermata-wizard') {
+                    backLabel = "Home";
+                }
+
+                btnBackLabel.textContent = backLabel;
+                btnBack.style.visibility = 'visible';
+                headerSpacer.style.display = 'block';
+                
+                // Assicura che ci sia un solo listener
+                btnBack.removeEventListener('click', navigateBack);
+                btnBack.addEventListener('click', navigateBack);
+                
+            } else {
+                // Siamo sulla Home
+                btnBack.style.visibility = 'hidden';
+                headerSpacer.style.display = 'none';
+            }
+        }
+
+        // --- 4. Service Worker (Modulo 1.3) ---
+        async function registerServiceWorker() {
+            if ('serviceWorker' in navigator) {
+                try {
+                    const registration = await navigator.serviceWorker.register('./sw.js'); 
+                    console.log('Service Worker registrato con scope:', registration.scope);
+                } catch (error) {
+                    console.error('Registrazione Service Worker fallita:', error);
+                }
+            }
+        }
+        
+        // --- 5. Modal Utility (Modulo 4.1) ---
+        const modalOverlay = document.getElementById('modal-overlay');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMessage = document.getElementById('modal-message');
+        const modalAlertBtns = document.getElementById('modal-alert-buttons');
+        const modalConfirmBtns = document.getElementById('modal-confirm-buttons');
+        const modalOkBtn = document.getElementById('modal-ok-btn');
+        const modalCancelBtn = document.getElementById('modal-cancel-btn');
+        const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+
+        // Funzione per mostrare un alert
+        function showModal(message, title = "Avviso") {
+            modalTitle.textContent = title;
+            modalMessage.innerHTML = message.replace(/\n/g, '<br>'); // Supporta newline - CORREZIONE
+            modalAlertBtns.style.display = 'flex';
+            modalConfirmBtns.style.display = 'none';
+            modalOverlay.classList.add('active');
+            
+            return new Promise((resolve) => {
+                const okListener = () => {
+                    modalOverlay.classList.remove('active');
+                    modalOkBtn.removeEventListener('click', okListener);
+                    resolve(true);
+                };
+                modalOkBtn.addEventListener('click', okListener);
+            });
+        }
+
+        // Funzione per mostrare una conferma
+        function showConfirmModal(message, title = "Conferma") {
+            modalTitle.textContent = title;
+            modalMessage.innerHTML = message.replace(/\n/g, '<br>'); // Supporta newline - CORREZIONE
+            modalAlertBtns.style.display = 'none';
+            modalConfirmBtns.style.display = 'flex';
+            modalOverlay.classList.add('active');
+            
+            return new Promise((resolve) => {
+                const cancelListener = () => {
+                    modalOverlay.classList.remove('active');
+                    modalCancelBtn.removeEventListener('click', cancelListener);
+                    modalConfirmBtn.removeEventListener('click', confirmListener);
+                    resolve(false);
+                };
+                const confirmListener = () => {
+                    modalOverlay.classList.remove('active');
+                    modalCancelBtn.removeEventListener('click', cancelListener);
+                    modalConfirmBtn.removeEventListener('click', confirmListener);
+                    resolve(true);
+                };
+                
+                modalCancelBtn.addEventListener('click', cancelListener);
+                modalConfirmBtn.addEventListener('click', confirmListener);
+            });
+        }
+
+        // --- 5.5 NUOVO: Lightbox Utility ---
+        // La funzione viene assegnata a `window` in DOMContentLoaded
+        // per essere accessibile dagli `onclick` inline.
+        
+        // --- 6. Logica Schermata 1: Home (Modulo 4.2) ---
+        const elencoRilievi = document.getElementById('elenco-rilievi');
+        
+        async function loadHomeScreen() {
+            elencoRilievi.innerHTML = '<p class="text-center text-gray-500">Nessun rilievo in corso.</p>';
+            
+            try {
+                // Ordina per ID decrescente (i più nuovi prima)
+                const reports = await db.reports.orderBy('id').reverse().toArray();
+                
+                if (reports.length > 0) {
+                    elencoRilievi.innerHTML = ''; // Pulisci
+                    reports.forEach(report => {
+                        const date = new Date(report.dateTime).toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' });
+                        const reportEl = document.createElement('div');
+                        reportEl.className = 'neum-card p-4 flex items-center justify-between';
+                        
+                        // *** MODIFICATO: Aggiunto pulsante Esporta PDF ***
+                        reportEl.innerHTML = `
+                            <div class="flex-1 cursor-pointer" data-report-id="${report.id}">
+                                <h3 class="font-bold text-lg text-blue-700">Rilievo #${report.id}</h3>
+                                <p class="text-sm text-gray-600">Data: ${date}</p>
+                                <span class="text-sm font-medium ${report.status === 'completed' ? 'text-green-600' : 'text-yellow-600'}">${report.status === 'completed' ? 'Completato' : 'In corso'}</span>
+                            </div>
+                            <div class="flex flex-shrink-0 ml-2 space-x-2">
+                                <button class="btn-export-report neum-icon-btn neum-btn-primary" data-report-id="${report.id}" title="Esporta Dati ZIP">
+                                    <i data-lucide="download" class="w-5 h-5"></i>
+                                </button>
+                                
+                                <!-- NUOVO: Pulsante PDF visibile solo se 'completed' -->
+                                ${report.status === 'completed' ? `
+                                <button class="btn-export-pdf neum-icon-btn neum-btn-pdf" data-report-id="${report.id}" title="Esporta Riepilogo PDF">
+                                    <i data-lucide="file-text" class="w-5 h-5"></i>
+                                </button>
+                                ` : ''}
+                                
+                                <button class="btn-delete-report neum-icon-btn neum-btn-danger" data-report-id="${report.id}" title="Elimina Rilievo">
+                                    <i data-lucide="trash-2" class="w-5 h-5"></i>
+                                </button>
+                            </div>
+                        `;
+                        
+                        // Listener per navigare (solo sulla parte sinistra)
+                        reportEl.querySelector('.flex-1.cursor-pointer').addEventListener('click', (e) => {
+                            const id = parseInt(e.currentTarget.getAttribute('data-report-id'));
+                            navigateToDashboard(id);
+                        });
+                        
+                        // Listener per eliminare (solo sul pulsante)
+                        reportEl.querySelector('.btn-delete-report').addEventListener('click', async (e) => {
+                            const id = parseInt(e.currentTarget.getAttribute('data-report-id'));
+                            e.stopPropagation(); // Ferma la navigazione
+                            
+                            if (await showConfirmModal(`Sei sicuro di voler eliminare il Rilievo #${id} e tutti i suoi dati? L'azione è irreversibile.`, "Conferma Eliminazione")) {
+                                await deleteReport(id);
+                                await loadHomeScreen(); // Ricarica la home
+                            }
+                        });
+                        
+                        // Listener per Esportare ZIP
+                        reportEl.querySelector('.btn-export-report').addEventListener('click', async (e) => {
+                            const id = parseInt(e.currentTarget.getAttribute('data-report-id'));
+                            e.stopPropagation(); // Ferma la navigazione
+                            await exportReportData(id);
+                        });
+                        
+                        // *** NUOVO: Listener per Esportare PDF ***
+                        // L'optional chaining (?) è fondamentale perché il bottone può non esistere
+                        reportEl.querySelector('.btn-export-pdf')?.addEventListener('click', async (e) => {
+                            const id = parseInt(e.currentTarget.getAttribute('data-report-id'));
+                            e.stopPropagation(); // Ferma la navigazione
+                            await exportReportAsPDF(id); // Chiama la nuova funzione PDF
+                        });
+
+                        elencoRilievi.appendChild(reportEl);
+                    });
+                    
+                    lucide.createIcons(); // Renderizza icone
+                }
+            } catch (error) {
+                console.error("Errore caricamento home:", error);
+                elencoRilievi.innerHTML = '<p class="text-center text-red-500">Errore nel caricamento dei rilievi.</p>';
+            }
+        }
+
+        // Funzione per eliminare un report e tutti i dati collegati
+        async function deleteReport(reportId) {
+            console.log(`Eliminazione report #${reportId} e dati associati...`);
+            try {
+                // Esegui tutto in una singola transazione
+                await db.transaction('rw', 
+                    db.reports, db.vehicles, db.people, db.infrastructure, 
+                    db.photos, db.measurePoints, db.measurements, db.suggestedMeasurements, 
+                async () => {
+                    // 1. Cancella dati associati (in parallelo)
+                    await Promise.all([
+                        db.vehicles.where({ reportId }).delete(),
+                        db.people.where({ reportId }).delete(),
+                        db.infrastructure.where({ reportId }).delete(),
+                        db.photos.where({ reportId }).delete(),
+                        db.measurePoints.where({ reportId }).delete(),
+                        db.measurements.where({ reportId }).delete(),
+                        db.suggestedMeasurements.where({ reportId }).delete()
+                    ]);
+                    
+                    // 2. Cancella il report principale
+                    await db.reports.delete(reportId);
+                });
+                showModal(`Rilievo #${reportId} eliminato con successo.`, "Eliminato");
+            } catch (error) {
+                console.error(`Errore durante l'eliminazione del report #${reportId}:`, error);
+                showModal("Impossibile eliminare il rilievo.", "Errore");
+            }
+        }
+
+        // --- 7. Logica Schermata 2: Wizard (Modulo 3.2) ---
+        const btnSaveWizard = document.getElementById('btn-save-wizard');
+
+        async function saveWizardData() {
+            // Lettura input
+            const numVeicoli = parseInt(document.getElementById('num-veicoli').value) || 0;
+            const numPedoni = parseInt(document.getElementById('num-pedoni').value) || 0;
+            const numTestimoni = parseInt(document.getElementById('num-testimoni').value) || 0; // NUOVO
+            const numUrto = parseInt(document.getElementById('num-urto').value) || 0;
+            const numFrenate = parseInt(document.getElementById('num-frenate').value) || 0;
+            const numDetriti = parseInt(document.getElementById('num-detriti').value) || 0;
+            const hasInfra = document.getElementById('has-infra').checked;
+            
+            if (numVeicoli <= 0) {
+                 showModal("È richiesto almeno 1 veicolo.", "Dati Mancanti");
+                 return;
+            }
+
+            try {
+                // 1. Crea il Report principale e ottieni l'ID
+                const reportId = await db.reports.add({
+                    dateTime: new Date(),
+                    status: 'in progress'
+                });
+                
+                // Inizializza array per le transazioni
+                let vehiclesData = [];
+                let peopleData = [];
+                let pointsData = []; // Punti generati (Modulo 3.3)
+
+                // 2. Prepara Veicoli e Persone
+                for (let i = 0; i < numVeicoli; i++) {
+                    const vehicleLabel = String.fromCharCode(65 + i); // A, B, C...
+                    
+                    // Aggiungi veicolo alla transazione
+                    const vehicleId = await db.vehicles.add({ reportId, label: vehicleLabel });
+                    
+                    // Aggiungi conducente per quel veicolo
+                    await db.people.add({
+                        reportId,
+                        vehicleId: vehicleId,
+                        type: 'conducente',
+                        label: `Conducente ${vehicleLabel}`
+                    });
+                    
+                    // Aggiungi Punti planimetrici (mozzi) per il veicolo (Modulo 3.3)
+                    pointsData.push({ reportId, label: `${vehicleLabel}1`, type: 'veicolo', associatedVehicleId: vehicleId, isGenerated: true });
+                    pointsData.push({ reportId, label: `${vehicleLabel}2`, type: 'veicolo', associatedVehicleId: vehicleId, isGenerated: true });
+                }
+
+                // 3. Prepara Pedoni
+                for (let i = 0; i < numPedoni; i++) {
+                    const personId = await db.people.add({
+                        reportId,
+                        vehicleId: 0, // 0 = Pedone
+                        type: 'pedone',
+                        label: `Pedone ${i + 1}`
+                    });
+                    
+                    // Aggiungi Punto planimetrico per il pedone (Modulo 3.3)
+                    pointsData.push({ reportId, label: `P${i + 1}`, type: 'pedone', associatedVehicleId: personId, isGenerated: true });
+                }
+                
+                // 3.5. Prepara Testimoni (NUOVO)
+                for (let i = 0; i < numTestimoni; i++) {
+                    await db.people.add({
+                        reportId,
+                        vehicleId: 0, // 0 = Non associato a veicolo
+                        type: 'testimone',
+                        label: `Testimone ${i + 1}`
+                    });
+                    // Nota: I testimoni non generano punti planimetrici
+                }
+                
+                // 4. Prepara Punti Planimetrici (Urto, Frenate, Detriti) (Modulo 3.3)
+                for (let i = 0; i < numUrto; i++) {
+                    pointsData.push({ reportId, label: `PU${i + 1}`, type: 'urto', associatedVehicleId: 0, isGenerated: true });
+                }
+                for (let i = 0; i < numFrenate; i++) {
+                    pointsData.push({ reportId, label: `F${i + 1}-INIZIO`, type: 'frenata', associatedVehicleId: 0, isGenerated: true });
+                    pointsData.push({ reportId, label: `F${i + 1}-FINE`, type: 'frenata', associatedVehicleId: 0, isGenerated: true });
+                }
+                for (let i = 0; i < numDetriti; i++) {
+                    pointsData.push({ reportId, label: `O${i + 1}`, type: 'oggetto', associatedVehicleId: 0, isGenerated: true });
+                }
+                
+                // 5. Salva i Punti generati in blocco
+                if (pointsData.length > 0) {
+                    await db.measurePoints.bulkAdd(pointsData);
+                }
+
+                // 6. Prepara Infrastrutture
+                if (hasInfra) {
+                    await db.infrastructure.add({
+                        reportId,
+                        description: "Danni a infrastrutture da specificare"
+                    });
+                }
+                
+                console.log(`Report #${reportId} creato con successo.`);
+                
+                // 7. Naviga alla Dashboard
+                navigateToDashboard(reportId);
+
+            } catch (error) {
+                console.error("Errore salvataggio wizard:", error);
+                if (error.name === 'ConstraintError') {
+                    showModal("Errore Critico del Database. Per favore, pulisci la cache dell'applicazione (F12 -> Application -> Clear site data) e ricarica la pagina.", "Errore Database");
+                } else {
+                    showModal(`Impossibile creare il rilievo: ${error.message}`, "Errore");
+                }
+            }
+        }
+        
+        btnSaveWizard.addEventListener('click', saveWizardData);
+
+        // --- 8. Logica Schermata 3: Dashboard (Modulo 4.4) ---
+        const dashboardTitle = document.getElementById('dashboard-title');
+        // const dashboardDatetime = document.getElementById('dashboard-datetime'); // Vecchio <p> rimosso
+        const vehiclesList = document.getElementById('dashboard-vehicles-list');
+        const infraPedoniList = document.getElementById('dashboard-infra-pedoni-list');
+        const legendaList = document.getElementById('dashboard-legenda-list');
+
+        function navigateToDashboard(reportId) {
+            currentReportId = reportId;
+            navigateTo('schermata-dashboard');
+        }
+
+        async function loadDashboard(reportId) {
+            try {
+                const report = await db.reports.get(reportId);
+                if (!report) {
+                    showModal("Rilievo non trovato.", "Errore");
+                    navigateTo('schermata-home');
+                    return;
+                }
+                
+                dashboardTitle.textContent = `Rilievo #${report.id}`;
+                
+                // NUOVO: Imposta il valore dell'input datetime-local
+                const reportDatetimeInput = document.getElementById('report-datetime');
+                reportDatetimeInput.value = toLocalISOString(new Date(report.dateTime));
+                reportDatetimeInput.removeEventListener('change', handleDateTimeChange); // Rimuovi vecchio listener
+                reportDatetimeInput.addEventListener('change', handleDateTimeChange); // Aggiungi nuovo
+                
+                // Carica Veicoli e Persone (Modulo 4.5)
+                await loadDashboardVehicles(reportId);
+                
+                // Carica Infra e Pedoni (Modulo 4.9)
+                await loadDashboardInfraPedoni(reportId);
+                
+                // Carica Legenda Misure (Modulo 4.12)
+                await loadDashboardLegenda(reportId);
+                
+                // Pulisce e ri-aggiunge listener per evitare duplicati
+                const btnGotoScene = document.getElementById('btn-goto-scene-photos');
+                const btnGotoPoints = document.getElementById('btn-goto-points');
+                const btnGotoMeasures = document.getElementById('btn-goto-measures');
+                const btnComplete = document.getElementById('btn-complete-report');
+
+                // Carica contatore per Foto Scena
+                const scenePhotosCount = await db.photos.where({ reportId: currentReportId, category: 'scena', associatedId: 0 }).count();
+                const newBtnGotoScene = btnGotoScene.cloneNode(true);
+                // Aggiungi il contatore
+                newBtnGotoScene.innerHTML = `
+                    <i data-lucide="aperture" class="w-5 h-5 mr-2"></i>
+                    Gestisci Foto Scena
+                    <span class="photo-counter-dash">${scenePhotosCount}</span>
+                `;
+                btnGotoScene.parentNode.replaceChild(newBtnGotoScene, btnGotoScene);
+                newBtnGotoScene.addEventListener('click', () => {
+                    navigateTo('schermata-foto-generiche', { 
+                        category: 'scena', 
+                        associatedId: 0, 
+                        title: 'Foto Scena', 
+                        subtitle: 'Foto panoramiche della scena' 
+                    });
+                });
+
+                const newBtnGotoPoints = btnGotoPoints.cloneNode(true);
+                btnGotoPoints.parentNode.replaceChild(newBtnGotoPoints, btnGotoPoints);
+                newBtnGotoPoints.addEventListener('click', () => navigateTo('schermata-punti'));
+
+                const newBtnGotoMeasures = btnGotoMeasures.cloneNode(true);
+                btnGotoMeasures.parentNode.replaceChild(newBtnGotoMeasures, btnGotoMeasures);
+                newBtnGotoMeasures.addEventListener('click', () => navigateTo('schermata-misure'));
+                
+                const newBtnComplete = btnComplete.cloneNode(true);
+                btnComplete.parentNode.replaceChild(newBtnComplete, btnComplete);
+                // MODIFICATO: Ora naviga al riepilogo
+                newBtnComplete.addEventListener('click', () => {
+                    navigateTo('schermata-riepilogo');
+                });
+                
+                lucide.createIcons();
+
+            } catch (error) {
+                console.error("Errore caricamento dashboard:", error);
+            }
+        }
+
+        async function loadDashboardVehicles(reportId) {
+            vehiclesList.innerHTML = '';
+            const vehicles = await db.vehicles.where({ reportId }).toArray();
+            
+            for (const vehicle of vehicles) {
+                const vehicleEl = document.createElement('div');
+                vehicleEl.className = 'neum-card-inset p-3 rounded-lg';
+                
+                let peopleHtml = '<ul class="pl-6 mt-2 space-y-2">';
+                const people = await db.people.where({ reportId, vehicleId: vehicle.id }).toArray();
+                
+                // Ordina per tipo (conducente prima, poi passeggeri)
+                people.sort((a, b) => {
+                    if (a.type === 'conducente') return -1;
+                    if (b.type === 'conducente') return 1;
+                    return a.label.localeCompare(b.label);
+                });
+
+                for (const person of people) {
+                    // Conteggio foto persona
+                    const personPhotosCount = await db.photos.where({ reportId: currentReportId, category: 'doc_persona', associatedId: person.id }).count();
+                    
+                    peopleHtml += `
+                        <li class="flex justify-between items-center">
+                            <span class="flex items-center">
+                                <i data-lucide="${person.type === 'conducente' ? 'user-cog' : 'user'}" class="w-4 h-4 mr-2 ${person.type === 'conducente' ? 'text-blue-700' : 'text-gray-600'}"></i>
+                                ${person.label} ${person.type === 'conducente' ? '' : `(${person.type})`}
+                            </span>
+                            <button class="neum-btn btn-goto-small btn-goto-person" data-person-id="${person.id}" data-label="${person.label}">
+                                <i data-lucide="file-text" class="w-4 h-4"></i>
+                                <!-- Contatore -->
+                                ${personPhotosCount > 0 ? `<span class="photo-counter">${personPhotosCount}</span>` : ''}
+                            </button>
+                        </li>
+                    `;
+                }
+                peopleHtml += '</ul>';
+                
+                // Pulsante Aggiungi Passeggero
+                const addPassengerBtnHtml = `
+                    <div class="mt-3 text-center">
+                        <button class="neum-btn btn-goto-small btn-add-passenger" data-vehicle-id="${vehicle.id}" data-vehicle-label="${vehicle.label}">
+                            <i data-lucide="user-plus" class="w-4 h-4 mr-1"></i> Aggiungi Passeggero
+                        </button>
+                    </div>
+                `;
+                
+                // Conteggio foto veicolo (danni + documenti)
+                const damagePhotosCount = await db.photos.where({ reportId: currentReportId, category: 'danno', associatedId: vehicle.id }).count();
+                const docPhotosCount = await db.photos.where({ reportId: currentReportId, category: 'doc_veicolo', associatedId: vehicle.id }).count();
+                const totalVehiclePhotos = damagePhotosCount + docPhotosCount;
+
+                vehicleEl.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <h4 class="text-lg font-semibold text-blue-700">Veicolo ${vehicle.label}</h4>
+                        <button class="neum-btn btn-goto-small btn-goto-vehicle" data-vehicle-id="${vehicle.id}" data-label="${vehicle.label}">
+                            <i data-lucide="camera" class="w-4 h-4"></i>
+                            <!-- Contatore -->
+                            ${totalVehiclePhotos > 0 ? `<span class="photo-counter">${totalVehiclePhotos}</span>` : ''}
+                        </button>
+                    </div>
+                    ${peopleHtml}
+                    ${addPassengerBtnHtml}
+                `;
+                vehiclesList.appendChild(vehicleEl);
+            }
+            
+            // Aggiungi listener ai pulsanti creati
+            vehiclesList.querySelectorAll('.btn-goto-vehicle').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const id = parseInt(e.currentTarget.dataset.vehicleId);
+                    const label = e.currentTarget.dataset.label;
+                    navigateTo('schermata-foto-veicolo', { vehicleId: id, title: `Veicolo ${label}` });
+                });
+            });
+            
+            vehiclesList.querySelectorAll('.btn-goto-person').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const id = parseInt(e.currentTarget.dataset.personId);
+                    const label = e.currentTarget.dataset.label;
+                    navigateTo('schermata-foto-persona', { personId: id, title: label });
+                });
+            });
+
+            // Listener per Aggiungi Passeggero
+            vehiclesList.querySelectorAll('.btn-add-passenger').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const vehicleId = parseInt(e.currentTarget.dataset.vehicleId);
+                    const vehicleLabel = e.currentTarget.dataset.vehicleLabel;
+                    
+                    const passengerCount = await db.people.where({ reportId: currentReportId, vehicleId: vehicleId, type: 'passeggero' }).count();
+                    const newLabel = `Passeggero ${vehicleLabel}${passengerCount + 1}`;
+                    
+                    try {
+                        await db.people.add({
+                            reportId: currentReportId,
+                            vehicleId: vehicleId,
+                            type: 'passeggero',
+                            label: newLabel
+                        });
+                        await loadDashboardVehicles(currentReportId);
+                        lucide.createIcons();
+                    } catch (error) {
+                        console.error("Errore aggiunta passeggero:", error);
+                        showModal("Impossibile aggiungere il passeggero.", "Errore");
+                    }
+                });
+            });
+        }
+        
+        async function loadDashboardInfraPedoni(reportId) {
+            infraPedoniList.innerHTML = '';
+            
+            // Pedoni
+            const pedoni = await db.people.where({ reportId, vehicleId: 0, type: 'pedone' }).toArray();
+            if (pedoni.length > 0) {
+                for (const p of pedoni) {
+                    const pedonePhotosCount = await db.photos.where({ reportId: currentReportId, category: 'doc_persona', associatedId: p.id }).count();
+                    
+                    infraPedoniList.innerHTML += `
+                        <div class="flex justify-between items-center neum-card-inset p-3 rounded-lg">
+                            <span class="flex items-center font-medium">
+                                <i data-lucide="person-standing" class="w-5 h-5 mr-2 text-yellow-700"></i>
+                                ${p.label}
+                            </span>
+                            <button class="neum-btn btn-goto-small btn-goto-pedone" data-person-id="${p.id}" data-label="${p.label}">
+                                <i data-lucide="file-text" class="w-4 h-4"></i>
+                                ${pedonePhotosCount > 0 ? `<span class="photo-counter">${pedonePhotosCount}</span>` : ''}
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+            
+            // Testimoni
+            const testimoni = await db.people.where({ reportId, vehicleId: 0, type: 'testimone' }).toArray();
+            if (testimoni.length > 0) {
+                for (const t of testimoni) {
+                    const testimonePhotosCount = await db.photos.where({ reportId: currentReportId, category: 'doc_persona', associatedId: t.id }).count();
+                    
+                    infraPedoniList.innerHTML += `
+                        <div class="flex justify-between items-center neum-card-inset p-3 rounded-lg">
+                            <span class="flex items-center font-medium">
+                                <i data-lucide="eye" class="w-5 h-5 mr-2 text-cyan-700"></i>
+                                ${t.label}
+                            </span>
+                            <button class="neum-btn btn-goto-small btn-goto-testimone" data-person-id="${t.id}" data-label="${t.label}">
+                                <i data-lucide="file-text" class="w-4 h-4"></i>
+                                ${testimonePhotosCount > 0 ? `<span class="photo-counter">${testimonePhotosCount}</span>` : ''}
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+            
+            // Infrastrutture
+            const infra = await db.infrastructure.where({ reportId }).toArray();
+            if (infra.length > 0) {
+                for (const i of infra) {
+                    const infraPhotosCount = await db.photos.where({ reportId: currentReportId, category: 'infra', associatedId: i.id }).count();
+
+                    infraPedoniList.innerHTML += `
+                        <div class="flex justify-between items-center neum-card-inset p-3 rounded-lg">
+                            <span class="flex items-center font-medium">
+                                <i data-lucide="traffic-cone" class="w-5 h-5 mr-2 text-orange-600"></i>
+                                Danni Infrastrutture
+                            </span>
+                            <button class="neum-btn btn-goto-small btn-goto-infra" data-infra-id="${i.id}">
+                                <i data-lucide="camera" class="w-4 h-4"></i>
+                                ${infraPhotosCount > 0 ? `<span class="photo-counter">${infraPhotosCount}</span>` : ''}
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+            
+            if (infraPedoniList.innerHTML === '') {
+                infraPedoniList.innerHTML = '<p class="text-center text-gray-500 text-sm">Nessun pedone, testimone o danno a infrastrutture.</p>';
+            }
+            
+            // Aggiungi listener
+            infraPedoniList.querySelectorAll('.btn-goto-pedone').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const id = parseInt(e.currentTarget.dataset.personId);
+                    const label = e.currentTarget.dataset.label;
+                    navigateTo('schermata-foto-persona', { personId: id, title: label });
+                });
+            });
+            
+            infraPedoniList.querySelectorAll('.btn-goto-testimone').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const id = parseInt(e.currentTarget.dataset.personId);
+                    const label = e.currentTarget.dataset.label;
+                    navigateTo('schermata-foto-persona', { personId: id, title: label });
+                });
+            });
+
+            infraPedoniList.querySelectorAll('.btn-goto-infra').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const id = parseInt(e.currentTarget.dataset.infraId);
+                    navigateTo('schermata-foto-generiche', { 
+                        category: 'infra', 
+                        associatedId: id, 
+                        title: 'Foto Danni Infrastrutture', 
+                        subtitle: 'Foto dei danni (es. palo, guard-rail)' 
+                    });
+                });
+            });
+        }
+
+        async function loadDashboardLegenda(reportId) {
+            legendaList.innerHTML = '<p class="text-center text-gray-500">Nessuna misura suggerita.</p>';
+            const suggestions = await db.suggestedMeasurements.where({ reportId, status: 'pending' }).toArray();
+            
+            if (suggestions.length > 0) {
+                legendaList.innerHTML = '';
+                suggestions.forEach(s => {
+                    legendaList.innerHTML += `
+                        <li class="flex justify-between items-center">
+                            <span>${s.p1_label} &mdash; ${s.p2_label}</span>
+                            <i data-lucide="x-circle" class="w-4 h-4 text-red-500"></i>
+                        </li>
+                    `;
+                });
+                lucide.createIcons();
+            } else {
+                 const completed = await db.suggestedMeasurements.where({ reportId, status: 'completed' }).count();
+                 if (completed > 0) {
+                     legendaList.innerHTML = '<p class="text-center text-green-600 font-medium">Tutte le misure suggerite sono state prese!</p>';
+                 } else {
+                     legendaList.innerHTML = '<p class="text-center text-gray-500">Definisci un Punto Fisso (PF) per generare i suggerimenti.</p>';
+                 }
+            }
+        }
+        
+        // --- 9. Logica Schermate 4/5/6: FOTO (Moduli 4.6, 4.7, 4.8, 4.9) ---
+
+        // Funzione unica per gestire il caricamento foto
+        async function handlePhotoUpload(files, category, associatedId) {
+            if (!files || files.length === 0) return;
+            
+            try {
+                const photosData = [];
+                for (const file of files) {
+                    // Converti file in Blob (più efficiente per Dexie)
+                    const photoBlob = await file.arrayBuffer().then(buffer => new Blob([buffer], { type: file.type }));
+                    
+                    photosData.push({
+                        reportId: currentReportId,
+                        category: category,
+                        associatedId: associatedId,
+                        blob: photoBlob,
+                        mimeType: file.type, // Salva il mimeType
+                        timestamp: new Date()
+                    });
+                }
+                
+                await db.photos.bulkAdd(photosData);
+                console.log(`${photosData.length} foto salvate per [${category}, ${associatedId}]`);
+                
+                // Ricarica la galleria corretta
+                reloadCurrentPhotoGallery();
+                
+            } catch (error) {
+                console.error("Errore salvataggio foto:", error);
+                showModal("Impossibile salvare le foto nel database.", "Errore");
+            }
+        }
+
+        // Funzione unica per ricaricare la galleria attiva
+        function reloadCurrentPhotoGallery() {
+            const activeScreen = document.querySelector('.screen.active').id;
+            
+            switch(activeScreen) {
+                case 'schermata-foto-veicolo':
+                    loadPhotoGallery(currentPhotoContext.associatedId, 'danno', 'vehicle-damage-photos');
+                    loadPhotoGallery(currentPhotoContext.associatedId, 'doc_veicolo', 'vehicle-doc-photos');
+                    break;
+                case 'schermata-foto-persona':
+                    loadPhotoGallery(currentPhotoContext.associatedId, 'doc_persona', 'person-doc-photos');
+                    break;
+                case 'schermata-foto-generiche':
+                    loadPhotoGallery(currentPhotoContext.associatedId, currentPhotoContext.category, 'generic-photos-grid');
+                    break;
+            }
+        }
+        
+        // Funzione unica per disegnare una galleria
+        async function loadPhotoGallery(associatedId, category, gridElementId) {
+            const grid = document.getElementById(gridElementId);
+            grid.innerHTML = '';
+            
+            const photos = await db.photos.where({ 
+                reportId: currentReportId, 
+                category, 
+                associatedId 
+            }).toArray();
+            
+            if (photos.length === 0) {
+                grid.innerHTML = '<p class="col-span-4 text-center text-gray-500 text-sm">Nessuna foto</p>';
+            }
+            
+            photos.forEach(photo => {
+                // *** MODIFICATO PER LIGHTBOX ***
+                const url = URL.createObjectURL(photo.blob);
+                summaryObjectUrls.push(url); // Aggiungi alla lista di pulizia
+                
+                const thumb = document.createElement('div');
+                thumb.className = 'photo-thumbnail';
+                thumb.innerHTML = `
+                    <img src="${url}" alt="Foto" class="cursor-pointer"> <!-- NUOVO: cursor-pointer -->
+                    <button class="delete-photo-btn" data-photo-id="${photo.id}">
+                        <i data-lucide="x" class="w-4 h-4 text-white"></i>
+                    </button>
+                `;
+                
+                const imgEl = thumb.querySelector('img');
+                
+                // RIMOSSO: La pulizia ora è gestita da revokeSummaryUrls()
+                // imgEl.onload = () => URL.revokeObjectURL(url); 
+                
+                // NUOVO: Listener per lightbox
+                imgEl.addEventListener('click', () => {
+                    // Chiama la funzione globale definita in DOMContentLoaded
+                    if(window.showLightbox) {
+                        window.showLightbox(url);
+                    }
+                });
+                
+                // Listener per eliminare foto
+                thumb.querySelector('.delete-photo-btn').addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const photoId = parseInt(e.currentTarget.dataset.photoId);
+                    if (await showConfirmModal("Eliminare questa foto?", "Conferma")) {
+                        await db.photos.delete(photoId);
+                        reloadCurrentPhotoGallery(); // Ricarica la galleria (e rigenera gli URL)
+                    }
+                });
+                
+                grid.appendChild(thumb);
+            });
+            lucide.createIcons();
+        }
+
+        // Schermata 4: Foto Veicolo
+        const inputDamagePhoto = document.getElementById('input-damage-photo');
+        const inputVehicleDocPhoto = document.getElementById('input-vehicle-doc-photo');
+        
+        function loadVehiclePhotoScreen(vehicleId, title) {
+            document.getElementById('vehicle-photo-title').textContent = title;
+            currentPhotoContext = { category: 'danno', associatedId: vehicleId }; // Contesto multiplo
+            
+            // Pulisci URL vecchi prima di caricare i nuovi
+            revokeSummaryUrls(); 
+            loadPhotoGallery(vehicleId, 'danno', 'vehicle-damage-photos');
+            loadPhotoGallery(vehicleId, 'doc_veicolo', 'vehicle-doc-photos');
+
+            // Reset e aggiunta listener
+            inputDamagePhoto.value = null;
+            inputDamagePhoto.onchange = (e) => handlePhotoUpload(e.target.files, 'danno', vehicleId);
+            
+            inputVehicleDocPhoto.value = null;
+            inputVehicleDocPhoto.onchange = (e) => handlePhotoUpload(e.target.files, 'doc_veicolo', vehicleId);
+        }
+        
+        // Schermata 5: Foto Persona
+        const inputPersonDocPhoto = document.getElementById('input-person-doc-photo');
+
+        function loadPersonPhotoScreen(personId, title) {
+            document.getElementById('person-photo-title').textContent = title;
+            currentPhotoContext = { category: 'doc_persona', associatedId: personId };
+            
+            // Pulisci URL vecchi prima di caricare i nuovi
+            revokeSummaryUrls();
+            loadPhotoGallery(personId, 'doc_persona', 'person-doc-photos');
+            
+            inputPersonDocPhoto.value = null;
+            inputPersonDocPhoto.onchange = (e) => handlePhotoUpload(e.target.files, 'doc_persona', personId);
+        }
+        
+        // Schermata 6: Foto Generiche
+        const inputGenericPhoto = document.getElementById('input-generic-photo');
+
+        function loadGenericPhotoScreen(category, associatedId, title, subtitle) {
+            document.getElementById('generic-photo-title').textContent = title;
+            document.getElementById('generic-photo-subtitle').textContent = subtitle;
+            currentPhotoContext = { category, associatedId };
+            
+            // Pulisci URL vecchi prima di caricare i nuovi
+            revokeSummaryUrls();
+            loadPhotoGallery(associatedId, category, 'generic-photos-grid');
+            
+            inputGenericPhoto.value = null;
+            inputGenericPhoto.onchange = (e) => handlePhotoUpload(e.target.files, category, associatedId);
+        }
+        
+        // --- 10. Logica Schermata 7: Punti (Modulo 4.11) ---
+        const pointsList = document.getElementById('points-list');
+        const inputPfLabel = document.getElementById('input-pf-label');
+        const btnAddPf = document.getElementById('btn-add-pf');
+        
+        async function loadPointsScreen() {
+            pointsList.innerHTML = '';
+            const points = await db.measurePoints.where({ reportId: currentReportId }).toArray();
+            
+            if (points.length === 0) {
+                pointsList.innerHTML = '<p class="text-center text-gray-500">Nessun punto definito.</p>';
+                return;
+            }
+            
+            // Ordina: PF prima, poi generati
+            points.sort((a, b) => {
+                if (a.type === 'fisso' && b.type !== 'fisso') return -1;
+                if (a.type !== 'fisso' && b.type === 'fisso') return 1;
+                return a.label.localeCompare(b.label);
+            });
+            
+            points.forEach(p => {
+                const el = document.createElement('div');
+                el.className = 'flex justify-between items-center p-3 rounded-lg';
+                
+                let icon = 'map-pin';
+                let color = 'text-gray-700';
+                
+                if (p.type === 'fisso') {
+                    icon = 'anchor';
+                    color = 'text-red-600';
+                } else if (p.type === 'veicolo') {
+                    icon = 'car';
+                    color = 'text-blue-600';
+                }
+                
+                el.innerHTML = `
+                    <span class="flex items-center font-medium ${color}">
+                        <i data-lucide="${icon}" class="w-5 h-5 mr-2"></i>
+                        ${p.label}
+                    </span>
+                    ${!p.isGenerated ? `
+                    <button class="neum-icon-btn neum-btn-danger btn-delete-point" data-point-id="${p.id}" data-label="${p.label}">
+                        <i data-lucide="trash-2" class="w-5 h-5"></i>
+                    </button>
+                    ` : `
+                    <span class="text-xs text-gray-400">Auto</span>
+                    `}
+                `;
+                pointsList.appendChild(el);
+            });
+            
+            // Listener per eliminare Punti Fissi
+            pointsList.querySelectorAll('.btn-delete-point').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const id = parseInt(e.currentTarget.dataset.pointId);
+                    const label = e.currentTarget.dataset.label;
+                    
+                    if (await showConfirmModal(`Eliminare il punto '${label}'? Verranno eliminate anche tutte le misure e i suggerimenti associati.`, "Conferma")) {
+                        await deleteMeasurePoint(id, label);
+                        await loadPointsScreen(); // Ricarica
+                    }
+                });
+            });
+            
+            lucide.createIcons();
+        }
+
+        async function addPf() {
+            const label = inputPfLabel.value.trim().toUpperCase();
+            if (!label) {
+                showModal("L'etichetta del Punto Fisso non può essere vuota.", "Errore");
+                return;
+            }
+            
+            try {
+                // Controlla se esiste già
+                const existing = await db.measurePoints
+                    .where({ reportId: currentReportId, label: label })
+                    .first();
+                
+                if (existing) {
+                    showModal(`Esiste già un punto con etichetta '${label}'.`, "Errore");
+                    return;
+                }
+                
+                // 1. Aggiungi il punto PF
+                await db.measurePoints.add({
+                    reportId: currentReportId,
+                    label: label,
+                    type: 'fisso',
+                    associatedVehicleId: 0,
+                    isGenerated: false
+                });
+                
+                console.log(`Punto Fisso '${label}' aggiunto.`);
+                inputPfLabel.value = '';
+                
+                // 2. GENERA SUGGERIMENTI (Modulo 3.4)
+                await generateSuggestions();
+                
+                // 3. Ricarica la lista
+                await loadPointsScreen();
+                
+            } catch (error) {
+                console.error("Errore aggiunta PF:", error);
+                showModal("Impossibile aggiungere il punto.", "Errore");
+            }
+        }
+        
+        btnAddPf.addEventListener('click', addPf);
+        
+        async function deleteMeasurePoint(pointId, pointLabel) {
+            try {
+                await db.transaction('rw', 
+                    db.measurePoints, db.measurements, db.suggestedMeasurements, 
+                async () => {
+                    // 1. Cancella il punto
+                    await db.measurePoints.delete(pointId);
+                    
+                    // 2. Cancella Misure associate
+                    await Promise.all([
+                        db.measurements.where({ reportId: currentReportId, p1_label: pointLabel }).delete(),
+                        db.measurements.where({ reportId: currentReportId, p2_label: pointLabel }).delete()
+                        // Non serve cancellare i suggerimenti, li rigeneriamo
+                    ]);
+                });
+                
+                console.log(`Punto '${pointLabel}' e misure associate eliminati.`);
+                
+                // 3. Rigenera TUTTI i suggerimenti da zero
+                await generateSuggestions();
+                
+            } catch (error) {
+                console.error("Errore eliminazione punto:", error);
+            }
+        }
+
+        // Funzione helper per creare un suggerimento ordinato
+        function createSuggestion(labelA, labelB, type) {
+            const [p1_label, p2_label] = [labelA, labelB].sort();
+            return {
+                reportId: currentReportId,
+                p1_label,
+                p2_label,
+                status: 'pending',
+                type
+            };
+        }
+
+        async function generateSuggestions() {
+            // Logica di generazione suggerimenti (Modulo 3.4) RIVISTA E PULITA
+            console.log("Rigenerazione suggerimenti...");
+            
+            const allPoints = await db.measurePoints
+                .where({ reportId: currentReportId })
+                .toArray();
+            
+            const fixedPoints = allPoints.filter(p => p.type === 'fisso');
+            const generatedPoints = allPoints.filter(p => p.isGenerated);
+            
+            // Ordina i PF per ID (crescente), così i "primi due" sono i primi aggiunti
+            fixedPoints.sort((a, b) => a.id - b.id);
+            
+            if (fixedPoints.length < 2 || generatedPoints.length === 0) {
+                 console.log("Servono almeno 2 Punti Fissi e 1 punto generato per la triangolazione.");
+                 // Pulisci i suggerimenti esistenti se la base non è più valida
+                 await db.suggestedMeasurements.where({ reportId: currentReportId }).delete();
+                 return;
+            }
+
+            // Base di triangolazione (i primi due PF)
+            const pfBase1 = fixedPoints[0].label;
+            const pfBase2 = fixedPoints[1].label;
+            
+            const suggestions = [];
+
+            // 1. Aggiungi distanza base
+            suggestions.push(createSuggestion(pfBase1, pfBase2, 'fissi'));
+
+            // 2. Aggiungi triangolazioni dai DUE PUNTI BASE a tutti i punti generati
+            generatedPoints.forEach(p => {
+                suggestions.push(createSuggestion(pfBase1, p.label, 'triangolazione'));
+                suggestions.push(createSuggestion(pfBase2, p.label, 'triangolazione'));
+            });
+            
+            // 3. Aggiungi misure dai PF "extra" (dal terzo in poi) verso i PUNTI BASE
+            if (fixedPoints.length > 2) {
+                const extraPFs = fixedPoints.slice(2); // Tutti dal terzo in poi
+                extraPFs.forEach(pfExtra => {
+                    suggestions.push(createSuggestion(pfExtra.label, pfBase1, 'fissi'));
+                    suggestions.push(createSuggestion(pfExtra.label, pfBase2, 'fissi'));
+                });
+            }
+            
+            // 4. Pulisci i vecchi suggerimenti e aggiungi i nuovi
+            if (suggestions.length > 0) {
+                // Usiamo una Map per garantire l'unicità
+                const uniqueSuggestionsMap = new Map();
+                suggestions.forEach(s => {
+                    const key = `${s.p1_label}|${s.p2_label}`;
+                    if (!uniqueSuggestionsMap.has(key)) {
+                        uniqueSuggestionsMap.set(key, s);
+                    }
+                });
+                
+                const uniqueSuggestions = Array.from(uniqueSuggestionsMap.values());
+                
+                // Controlla le misure già prese per impostare lo stato corretto
+                const existingMeasures = await db.measurements.where({ reportId: currentReportId }).toArray();
+                const measuresMap = new Map();
+                existingMeasures.forEach(m => {
+                    const key = `${m.p1_label}|${m.p2_label}`; // Già ordinate
+                    measuresMap.set(key, m);
+                });
+                
+                uniqueSuggestions.forEach(s => {
+                    const key = `${s.p1_label}|${s.p2_label}`;
+                    if (measuresMap.has(key)) {
+                        s.status = 'completed';
+                    }
+                });
+
+                // Sostituzione atomica
+                await db.transaction('rw', db.suggestedMeasurements, async () => {
+                    await db.suggestedMeasurements.where({ reportId: currentReportId }).delete();
+                    await db.suggestedMeasurements.bulkAdd(uniqueSuggestions);
+                });
+                
+                console.log(`${uniqueSuggestions.length} suggerimenti rigenerati.`);
+            } else {
+                 await db.suggestedMeasurements.where({ reportId: currentReportId }).delete();
+            }
+        }
+        
+        // --- 11. Logica Schermata 8: Misure (Modulo 4.12) ---
+        const selectP1 = document.getElementById('select-p1');
+        const selectP2 = document.getElementById('select-p2');
+        const inputDistance = document.getElementById('input-distance');
+        const btnSaveMeasure = document.getElementById('btn-save-measure');
+        const measuresList = document.getElementById('measures-list');
+
+        async function loadMeasuresScreen() {
+            // 1. Carica Select
+            selectP1.innerHTML = '<option value="">Seleziona punto</option>';
+            selectP2.innerHTML = '<option value="">Seleziona punto</option>';
+            
+            const points = await db.measurePoints.where({ reportId: currentReportId }).toArray();
+            // Ordina PF prima
+            points.sort((a, b) => {
+                if (a.type === 'fisso' && b.type !== 'fisso') return -1;
+                if (a.type !== 'fisso' && b.type === 'fisso') return 1;
+                return a.label.localeCompare(b.label);
+            });
+            
+            points.forEach(p => {
+                selectP1.innerHTML += `<option value="${p.label}">${p.label} (${p.type})</option>`;
+                selectP2.innerHTML += `<option value="${p.label}">${p.label} (${p.type})</option>`;
+            });
+            
+            // Pulisci form
+            inputDistance.value = '';
+            
+            // 2. Carica Lista Misure Esistenti
+            await loadMeasuresList();
+        }
+
+        async function loadMeasuresList() {
+            measuresList.innerHTML = '<p class="text-center text-gray-500">Nessuna misura inserita.</p>';
+            const measures = await db.measurements.where({ reportId: currentReportId }).toArray();
+            
+            if (measures.length > 0) {
+                measuresList.innerHTML = '';
+                // Ordina per etichetta
+                measures.sort((a,b) => a.p1_label.localeCompare(b.p1_label) || a.p2_label.localeCompare(b.p2_label));
+
+                measures.forEach(m => {
+                    const el = document.createElement('div');
+                    el.className = 'flex justify-between items-center p-3 rounded-lg';
+                    el.innerHTML = `
+                        <span class="font-medium">${m.p1_label} &mdash; ${m.p2_label}</span>
+                        <span class="font-bold text-blue-700">${m.distance.toFixed(2)} m</span>
+                        <button class="neum-icon-btn neum-btn-danger btn-delete-measure" data-measure-id="${m.id}" data-p1="${m.p1_label}" data-p2="${m.p2_label}">
+                            <i data-lucide="trash-2" class="w-5 h-5"></i>
+                        </button>
+                    `;
+                    measuresList.appendChild(el);
+                });
+                
+                // Listener eliminazione
+                measuresList.querySelectorAll('.btn-delete-measure').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        const id = parseInt(e.currentTarget.dataset.measureId);
+                        const p1 = e.currentTarget.dataset.p1;
+                        const p2 = e.currentTarget.dataset.p2;
+                        if (await showConfirmModal("Eliminare questa misura?", "Conferma")) {
+                            await db.measurements.delete(id);
+                            // Resetta lo stato del suggerimento
+                            await updateSuggestionStatus(p1, p2, 'pending');
+                            await loadMeasuresList();
+                        }
+                    });
+                });
+                lucide.createIcons();
+            }
+        }
+        
+        async function saveMeasure() {
+            const p1 = selectP1.value;
+            const p2 = selectP2.value;
+            const distance = parseFloat(inputDistance.value);
+            
+            if (!p1 || !p2 || !distance) {
+                showModal("Seleziona entrambi i punti e inserisci una distanza valida.", "Errore");
+                return;
+            }
+            if (p1 === p2) {
+                showModal("I due punti non possono essere uguali.", "Errore");
+                return;
+            }
+            
+            // Normalizza (es. A-B è uguale a B-A)
+            const [label1, label2] = [p1, p2].sort();
+            
+            try {
+                // Usiamo put() con l'indice [reportId+p1_label+p2_label] per fare "upsert"
+                // Se la misura A-B esiste, la sovrascrive.
+                await db.measurements.put({
+                    reportId: currentReportId,
+                    p1_label: label1,
+                    p2_label: label2,
+                    distance: distance
+                });
+                
+                // Aggiorna lo stato del suggerimento (Modulo 3.5)
+                await updateSuggestionStatus(label1, label2, 'completed');
+                
+                // Resetta form e ricarica lista
+                inputDistance.value = '';
+                selectP1.value = '';
+                selectP2.value = '';
+                await loadMeasuresList();
+                
+            } catch (error) {
+                console.error("Errore salvataggio misura:", error);
+                showModal("Impossibile salvare la misura.", "Errore");
+            }
+        }
+        
+        btnSaveMeasure.addEventListener('click', saveMeasure);
+
+        // Funzione per aggiornare lo stato di un suggerimento (Modulo 3.5)
+        async function updateSuggestionStatus(p1, p2, newStatus) {
+            const [label1, label2] = [p1, p2].sort();
+            
+            let suggestion = await db.suggestedMeasurements
+                .where({ reportId: currentReportId, p1_label: label1, p2_label: label2 })
+                .first();
+                
+            if (suggestion) {
+                await db.suggestedMeasurements.update(suggestion.id, { status: newStatus });
+                console.log(`Suggerimento ${label1}-${label2} aggiornato a ${newStatus}`);
+            } else {
+                console.warn(`Nessun suggerimento trovato per la coppia ${p1}-${p2} (o ${label1}-${label2})`);
+            }
+        }
+
+        // --- 11.5 NUOVA: Helper per data/ora e Handler ---
+        
+        /**
+         * Converte un oggetto Date in una stringa YYYY-MM-DDTHH:MM
+         * per gli input <input type="datetime-local">
+         */
+        function toLocalISOString(date) {
+            if (!date) return '';
+            const tzoffset = date.getTimezoneOffset() * 60000; // offset in milliseconds
+            const localISOTime = (new Date(date.getTime() - tzoffset)).toISOString().slice(0, 16);
+            return localISOTime;
+        }
+
+        /**
+         * Salva la data/ora quando l'utente la modifica dalla Dashboard
+         */
+        async function handleDateTimeChange(event) {
+            const newDateTimeValue = event.target.value;
+            if (!newDateTimeValue) return; // Non salvare se è vuoto
+
+            try {
+                const newDate = new Date(newDateTimeValue);
+                await db.reports.update(currentReportId, { dateTime: newDate });
+                console.log(`Data/ora del report #${currentReportId} aggiornata a ${newDate}`);
+            } catch (error) {
+                console.error("Errore aggiornamento data/ora:", error);
+            }
+        }
+
+        // --- 12. Logica Schermata 10: Riepilogo ---
+        
+        // Helper per creare una griglia di foto
+        function createPhotoGrid(photos, title) {
+            if (photos.length === 0) {
+                return `<h4 class="summary-subtitle">${title} (0)</h4><p class="text-sm text-gray-500">Nessuna foto.</p>`;
+            }
+            
+            let gridHtml = `<h4 class="summary-subtitle">${title} (${photos.length})</h4><div class="summary-grid">`;
+            for (const photo of photos) {
+                // Crea l'URL e lo salva per la pulizia
+                const url = URL.createObjectURL(photo.blob);
+                summaryObjectUrls.push(url);
+                // *** MODIFICATO: Aggiunto onclick per lightbox ***
+                gridHtml += `<img src="${url}" class="summary-thumbnail cursor-pointer" alt="Foto ${title}" onclick="showLightbox('${url}')">`;
+            }
+            gridHtml += `</div>`;
+            return gridHtml;
+        }
+
+        async function loadSummaryScreen(reportId) {
+            const content = document.getElementById('summary-content');
+            content.innerHTML = '<p class="text-center text-gray-500">Caricamento dati...</p>';
+            
+            // Pulisci eventuali URL vecchi
+            revokeSummaryUrls();
+            
+            try {
+                // Fetch di tutti i dati in parallelo
+                const [
+                    report, vehicles, people, infrastructure, 
+                    points, measures, allPhotos
+                ] = await Promise.all([
+                    db.reports.get(reportId),
+                    db.vehicles.where({ reportId }).toArray(),
+                    db.people.where({ reportId }).toArray(),
+                    db.infrastructure.where({ reportId }).toArray(),
+                    db.measurePoints.where({ reportId }).toArray(),
+                    db.measurements.where({ reportId }).toArray(),
+                    db.photos.where({ reportId }).toArray()
+                ]);
+
+                let html = '';
+
+                // Sezione 1: Info Generali
+                html += `
+                    <section class="summary-section">
+                        <h3 class="summary-title">
+                            <i data-lucide="file-text" class="w-6 h-6 mr-2"></i>
+                            Rilievo #${report.id}
+                        </h3>
+                        <div class="summary-data-pair">
+                            <span>Data e Ora</span>
+                            <span>${new Date(report.dateTime).toLocaleString('it-IT', { dateStyle: 'full', timeStyle: 'short' })}</span>
+                        </div>
+                        <div class="summary-data-pair">
+                            <span>Stato</span>
+                            <span>${report.status}</span>
+                        </div>
+                    </section>
+                `;
+
+                // Sezione 2: Veicoli e Persone
+                html += `
+                    <section class="summary-section">
+                        <h3 class="summary-title">
+                            <i data-lucide="truck" class="w-6 h-6 mr-2"></i>
+                            Veicoli e Persone Coinvolte
+                        </h3>
+                `;
+                
+                const pedoni = people.filter(p => p.type === 'pedone');
+                const testimoni = people.filter(p => p.type === 'testimone');
+
+                for (const vehicle of vehicles) {
+                    html += `<h4 class="summary-subtitle text-blue-700 font-bold border-t pt-4 mt-4">Veicolo ${vehicle.label}</h4>`;
+                    
+                    const damagePhotos = allPhotos.filter(p => p.category === 'danno' && p.associatedId === vehicle.id);
+                    html += createPhotoGrid(damagePhotos, "Foto Danni");
+
+                    const docPhotos = allPhotos.filter(p => p.category === 'doc_veicolo' && p.associatedId === vehicle.id);
+                    html += createPhotoGrid(docPhotos, "Foto Documenti Veicolo");
+
+                    const vehiclePeople = people.filter(p => p.vehicleId === vehicle.id);
+                    vehiclePeople.sort((a, b) => {
+                        if (a.type === 'conducente') return -1;
+                        if (b.type === 'conducente') return 1;
+                        return a.label.localeCompare(b.label);
+                    });
+
+                    for (const person of vehiclePeople) {
+                        html += `<h4 class="summary-subtitle pl-4">${person.label} ${person.type === 'conducente' ? '(Conducente)' : '(Passeggero)'}</h4>`;
+                        const personPhotos = allPhotos.filter(p => p.category === 'doc_persona' && p.associatedId === person.id);
+                        html += createPhotoGrid(personPhotos, "Foto Documenti Persona");
+                    }
+                }
+                
+                if (pedoni.length > 0) {
+                     html += `<h4 class="summary-subtitle text-yellow-700 font-bold border-t pt-4 mt-4">Pedoni Coinvolti</h4>`;
+                     for (const pedone of pedoni) {
+                        html += `<h4 class="summary-subtitle pl-4">${pedone.label}</h4>`;
+                        const personPhotos = allPhotos.filter(p => p.category === 'doc_persona' && p.associatedId === pedone.id);
+                        html += createPhotoGrid(personPhotos, "Foto Documenti Pedone");
+                    }
+                }
+                
+                if (testimoni.length > 0) {
+                     html += `<h4 class="summary-subtitle text-cyan-700 font-bold border-t pt-4 mt-4">Testimoni</h4>`;
+                     for (const test of testimoni) {
+                        html += `<h4 class="summary-subtitle pl-4">${test.label}</h4>`;
+                        const personPhotos = allPhotos.filter(p => p.category === 'doc_persona' && p.associatedId === test.id);
+                        html += createPhotoGrid(personPhotos, "Foto Documenti Testimone");
+                    }
+                }
+                html += `</section>`;
+                
+                
+                // SEZIONE 3: FOTO SCENA E INFRASTRUTTURE
+                html += `
+                    <section class="summary-section">
+                        <h3 class="summary-title">
+                            <i data-lucide="camera" class="w-6 h-6 mr-2"></i>
+                            Foto Scena e Infrastrutture
+                        </h3>
+                `;
+                
+                const scenePhotos = allPhotos.filter(p => p.category === 'scena' && p.associatedId === 0);
+                html += createPhotoGrid(scenePhotos, "Foto Panoramiche Scena");
+
+                if (infrastructure.length > 0) {
+                    const infraPhotos = allPhotos.filter(p => p.category === 'infra');
+                    html += createPhotoGrid(infraPhotos, "Foto Danni Infrastrutture");
+                }
+                html += `</section>`;
+
+
+                // Sezione 4: Planimetria
+                points.sort((a, b) => a.label.localeCompare(b.label));
+                measures.sort((a,b) => a.p1_label.localeCompare(b.p1_label) || a.p2_label.localeCompare(b.p2_label));
+
+                html += `
+                    <section class="summary-section">
+                        <h3 class="summary-title">
+                            <i data-lucide="ruler" class="w-6 h-6 mr-2"></i>
+                            Planimetria
+                        </h3>
+                        
+                        <h4 class="summary-subtitle">Punti Definiti (${points.length})</h4>
+                        <ul class="summary-list list-disc list-inside neum-card-inset p-3 rounded-lg">
+                            ${points.map(p => `<li>${p.label} <span class="text-sm text-gray-500">(${p.type})</span></li>`).join('')}
+                        </ul>
+                        
+                        <h4 class="summary-subtitle">Misure Rilevate (${measures.length})</h4>
+                        <div class="neum-card-inset p-3 rounded-lg">
+                        ${measures.map(m => `
+                            <div class="summary-data-pair">
+                                <span>${m.p1_label} &mdash; ${m.p2_label}</span>
+                                <span>${m.distance.toFixed(2)} m</span>
+                            </div>
+                        `).join('')}
+                        ${measures.length === 0 ? '<p class="text-sm text-gray-500 text-center">Nessuna misura.</p>' : ''}
+                        </div>
+                    </section>
+                `;
+
+                content.innerHTML = html;
+                lucide.createIcons();
+
+            } catch (error) {
+                console.error("Errore caricamento riepilogo:", error);
+                content.innerHTML = '<p class="text-center text-red-500">Impossibile caricare il riepilogo.</p>';
+            }
+        }
+        
+        // --- 13. FUNZIONI DI ESPORTAZIONE (ZIP E PDF) ---
+
+        /**
+         * Funzione principale per avviare l'esportazione ZIP
+         */
+        async function exportReportData(reportId) {
+            if (!await showConfirmModal(`Vuoi esportare i dati per il Rilievo #${reportId}?\n\nSarà generato un unico file .zip contenente tutte le foto e la legenda delle misure in formato .txt.`, "Conferma Esportazione")) {
+                return;
+            }
+
+            // Mostra un modal di attesa, perché lo zipping può essere lento
+            const loadingModalPromise = showModal("Creazione file .zip in corso...\nIl browser potrebbe bloccarsi per qualche secondo.", "Attendere");
+
+            try {
+                // === PARTE 1: ESPORTA FOTO (ZIP) E LEGENDA ===
+                await exportPhotosAsZip(reportId);
+                
+                // Chiudi il modal "Attendere"
+                modalOverlay.classList.remove('active');
+                
+                // === PARTE 2: MOSTRA CONFERMA ===
+                await showModal("Esportazione completata.\nIl download del file .zip è stato avviato.", "Successo");
+                
+            } catch (error) {
+                console.error("Errore durante l'esportazione:", error);
+                // Assicura che il modal di attesa sia chiuso in caso di errore
+                modalOverlay.classList.remove('active');
+                showModal(`Esportazione fallita: ${error.message}`, "Errore");
+            }
+        }
+
+        /**
+         * Crea uno ZIP con tutte le foto e avvia il download
+         */
+        async function exportPhotosAsZip(reportId) {
+            console.log("Inizio esportazione ZIP...");
+            const zip = new JSZip();
+            
+            // 1. Fetch tutti i dati necessari per i nomi delle cartelle
+            const photos = await db.photos.where({ reportId }).toArray();
+            if (photos.length === 0) {
+                console.log("Nessuna foto da esportare.");
+            }
+
+            const vehicles = await db.vehicles.where({ reportId }).toArray();
+            const people = await db.people.where({ reportId }).toArray();
+            
+            // Mappe per nomi cartelle
+            const vehicleMap = new Map(vehicles.map(v => [v.id, `Veicolo-${v.label}`]));
+            const personMap = new Map(people.map(p => [p.id, p.label.replace(/ /g, '-')]));
+
+            // 2. Aggiungi foto allo ZIP con una struttura di cartelle logica
+            for (const photo of photos) {
+                let path = "Generiche/";
+                let filename = `foto-${photo.id}.jpg`; // Default
+
+                switch (photo.category) {
+                    case 'scena':
+                        path = "1-Scena/";
+                        filename = `scena-${photo.id}.jpg`;
+                        break;
+                    case 'infra':
+                        path = "2-Infrastrutture/";
+                        filename = `infra-${photo.id}.jpg`;
+                        break;
+                    case 'danno':
+                        path = `3-Veicoli/${vehicleMap.get(photo.associatedId) || 'Veicolo-Sconosciuto'}/Danni/`;
+                        filename = `danno-${photo.id}.jpg`;
+                        break;
+                    case 'doc_veicolo':
+                        path = `3-Veicoli/${vehicleMap.get(photo.associatedId) || 'Veicolo-Sconosciuto'}/Documenti/`;
+                        filename = `doc-${photo.id}.jpg`;
+                        break;
+                    case 'doc_persona':
+                        const person = people.find(p => p.id === photo.associatedId);
+                        let personFolder = "Altre-Persone/";
+                        if (person) {
+                            if (person.vehicleId > 0) {
+                                personFolder = `3-Veicoli/${vehicleMap.get(person.vehicleId) || 'Veicolo-Sconosciuto'}/${personMap.get(person.id) || 'Persona-Sconosciuta'}/`;
+                            } else if (person.type === 'pedone') {
+                                personFolder = `4-Pedoni/${personMap.get(person.id) || 'Pedone-Sconosciuto'}/`;
+                            } else if (person.type === 'testimone') {
+                                personFolder = `5-Testimoni/${personMap.get(person.id) || 'Testimone-Sconosciuto'}/`;
+                            }
+                        }
+                        path = personFolder;
+                        filename = `doc-persona-${photo.id}.jpg`;
+                        break;
+                }
+                
+                // Aggiungi il blob allo zip
+                zip.file(path + filename, photo.blob, { binary: true });
+            }
+
+            // Aggiungi legenda .txt
+            console.log("Aggiungo legenda .txt allo zip...");
+            const legendText = await getLegendAsText(reportId);
+            zip.file("00-Legenda_Misure.txt", legendText); 
+
+            // 3. Genera e scarica lo ZIP
+            console.log("Genero il file ZIP...");
+            const zipBlob = await zip.generateAsync({ type: "blob" });
+            saveAs(zipBlob, `Rilievo_${reportId}_Dati_Completi.zip`);
+            console.log("File ZIP generato e download avviato.");
+        }
+
+        /**
+         * Prepara e *restituisce* la legenda delle misure come stringa di testo
+         */
+        async function getLegendAsText(reportId) {
+            console.log("Preparo testo legenda misure...");
+            
+            const measures = await db.measurements.where({ reportId }).toArray();
+            measures.sort((a,b) => a.p1_label.localeCompare(b.p1_label) || a.p2_label.localeCompare(b.p2_label));
+
+            const points = await db.measurePoints.where({ reportId }).toArray();
+            const pointsMap = new Map(points.map(p => [p.label, `(${p.type})`]));
+
+            let text = `LEGENDA MISURE - RILIEVO #${reportId}\n`;
+            text += `=========================================\n\n`;
+            text += `MISURE RILEVATE (${measures.length}):\n`;
+
+            if (measures.length === 0) {
+                text += "Nessuna misura rilevata.\n";
+            } else {
+                measures.forEach(m => {
+                    const p1_type = pointsMap.get(m.p1_label) || '';
+                    const p2_type = pointsMap.get(m.p2_label) || '';
+                    // Formato pulito per copia-incolla
+                    text += `${m.p1_label.padEnd(12)} ${p1_type.padEnd(10)} ---  ${m.p2_label.padEnd(12)} ${p2_type.padEnd(10)} :  ${m.distance.toFixed(2)} m\n`;
+                });
+            }
+            
+            text += `\n=========================================\n`;
+            text += `PUNTI TOTALI (${points.length}):\n`;
+            points.sort((a,b) => a.label.localeCompare(b.label)).forEach(p => {
+                text += `- ${p.label} (${p.type})\n`;
+            });
+            
+            return text;
+        }
+        
+        /**
+         * NUOVO: Converte Blob in Data URL, applicando la rotazione EXIF
+         * e restituendo le dimensioni corrette.
+         *
+         * *** CORREZIONE 1: Gestione MimeType per toDataURL ***
+         * `toDataURL` accetta il secondo parametro (qualità) SOLO per 'image/jpeg' o 'image/webp'.
+         * Usarlo con 'image/png' può causare errori o essere ignorato.
+         * Ora forziamo JPEG per coerenza, tranne per i PNG.
+         */
+        function processImageForPDF(blob) {
+            return new Promise((resolve, reject) => {
+                const url = URL.createObjectURL(blob);
+                const img = new Image();
+
+                img.onload = () => {
+                    try {
+                        const canvas = document.createElement('canvas');
+                        // Usa le dimensioni "corrette" lette dal browser
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+                        
+                        // *** INIZIO CORREZIONE 1 ***
+                        let newDataUrl;
+                        let mimeType;
+                        let format;
+
+                        if (blob.type === 'image/png') {
+                            newDataUrl = canvas.toDataURL('image/png');
+                            mimeType = 'image/png';
+                            format = 'PNG';
+                        } else {
+                            // Per tutto il resto (incluso image/jpeg), forza JPEG con compressione
+                            newDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+                            mimeType = 'image/jpeg';
+                            format = 'JPEG';
+                        }
+                        // *** FINE CORREZIONE 1 ***
+                        
+                        URL.revokeObjectURL(url);
+                        resolve({
+                            dataUrl: newDataUrl,
+                            width: img.width,
+                            height: img.height,
+                            mimeType: mimeType, // Passiamo il mimeType corretto
+                            format: format // Passiamo il formato (es. 'JPEG') per jsPDF
+                        });
+                    } catch (e) {
+                        URL.revokeObjectURL(url);
+                        reject(e);
+                    }
+                };
+
+                img.onerror = (e) => {
+                    URL.revokeObjectURL(url);
+                    reject(new Error("Impossibile caricare l'immagine dal blob."));
+                };
+                
+                img.src = url;
+            });
+        }
+
+
+        // *** FUNZIONE PER ESPORTAZIONE PDF (SOSTITUITA COMPLETAMENTE) ***
+        async function exportReportAsPDF(reportId) {
+            // Importa jsPDF dall'oggetto window
+            const { jsPDF } = window.jspdf;
+            if (!jsPDF) {
+                showModal("Libreria PDF (jsPDF) non trovata.", "Errore");
+                return;
+            }
+
+            if (!await showConfirmModal(`Vuoi generare il riepilogo PDF per il Rilievo #${reportId}?\n\nL'operazione potrebbe richiedere alcuni secondi, specialmente se ci sono molte foto.`, "Conferma Esportazione PDF")) {
+                return;
+            }
+
+            const loadingModalPromise = showModal("Generazione PDF in corso...\nQuesto può richiedere tempo.", "Attendere");
+
+            try {
+                // 1. Inizializza il documento PDF
+                const doc = new jsPDF({
+                    orientation: 'p', // portrait
+                    unit: 'mm', // millimeters
+                    format: 'a4' // A4
+                });
+
+                // 2. Fetch di tutti i dati (come in loadSummaryScreen)
+                const [
+                    report, vehicles, people, infrastructure, 
+                    points, measures, allPhotos
+                ] = await Promise.all([
+                    db.reports.get(reportId),
+                    db.vehicles.where({ reportId }).toArray(),
+                    db.people.where({ reportId }).toArray(),
+                    db.infrastructure.where({ reportId }).toArray(),
+                    db.measurePoints.where({ reportId }).toArray(),
+                    db.measurements.where({ reportId }).toArray(),
+                    db.photos.where({ reportId }).toArray()
+                ]);
+                
+                // 3. Definisci helper di layout
+                let y = 15; // Cursore Y globale
+                const pageHeight = doc.internal.pageSize.height;
+                const margin = 15;
+                const contentWidth = doc.internal.pageSize.width - (margin * 2);
+                const lineSpacing = 7;
+                const titleSpacing = 10;
+                const sectionSpacing = 12;
+
+                // Helper per Aggiungere testo con a-capo automatico
+                const addText = (text, x, size = 10, isBold = false) => {
+                    doc.setFontSize(size);
+                    doc.setFont(undefined, isBold ? 'bold' : 'normal');
+                    const lines = doc.splitTextToSize(text, contentWidth - (x - margin));
+                    doc.text(lines, x, y);
+                    // Modificato per spaziatura corretta
+                    y += (lines.length * (size / 2.8)); // Calcolo più preciso
+                };
+                
+                // Helper per Titoli di Sezione
+                const addTitle = (text, level = 1) => {
+                    checkPageBreak(titleSpacing * 2); // Spazio prima del titolo
+                    y += (level === 1 ? sectionSpacing : titleSpacing / 2);
+                    
+                    if (level === 1) {
+                        doc.setFontSize(16);
+                        doc.setFont(undefined, 'bold');
+                        doc.text(text, margin, y);
+                        y += titleSpacing / 1.5;
+                        doc.setLineWidth(0.5);
+                        doc.line(margin, y - 2, margin + contentWidth, y - 2); // Sottolinea
+                    } else { // level 2
+                        doc.setFontSize(12);
+                        doc.setFont(undefined, 'bold');
+                        doc.text(text, margin, y);
+                        y += (lineSpacing / 1.5);
+                    }
+                    y += 2; // Spazio extra dopo il titolo
+                };
+                
+                // Helper per controllo Page Break
+                const checkPageBreak = (spaceNeeded) => {
+                    if (y + spaceNeeded > pageHeight - margin) {
+                        doc.addPage();
+                        y = margin;
+                    }
+                };
+                
+                // Helper per coppie chiave-valore
+                const addDataPair = (label, value) => {
+                    checkPageBreak(lineSpacing);
+                    doc.setFontSize(10);
+                    doc.setFont(undefined, 'bold');
+                    doc.text(label, margin, y);
+                    doc.setFont(undefined, 'normal');
+                    
+                    const valueX = 60; // Posizione fissa per i valori
+                    const lines = doc.splitTextToSize(value, contentWidth - (valueX - margin));
+                    doc.text(lines, valueX, y);
+                    y += (lines.length * (lineSpacing / 1.8)); // Spaziatura corretta per multiriga
+                    y += 2; // Spazio extra
+                };
+                
+                // Helper per convertire Blob in Base64 Data URL (SPOSTATO FUORI)
+                // const blobToDataURL = ...
+                
+                // --- HELPER GRIGLIA FOTO (MODIFICATO E CORRETTO) ---
+                const addPhotoGrid = async (photos, title) => {
+                    if (photos.length === 0) {
+                        addTitle(title + " (0)", 2);
+                        addText("Nessuna foto.", margin + 5, 9);
+                        y += 5; // Aggiungi un po' di spazio
+                        return;
+                    }
+                    
+                    addTitle(`${title} (${photos.length})`, 2);
+                    checkPageBreak(30); // Spazio per almeno una riga di foto
+                    
+                    const boxSize = 40; // 40mm x 40mm box
+                    const padding = 4;
+                    let x = margin;
+                    
+                    for (const photo of photos) {
+                        try {
+                            // Usa la NUOVA funzione di processamento
+                            // *** CORREZIONE 2: Usiamo 'format' invece di 'mimeType' ***
+                            const { dataUrl, width, height, format } = await processImageForPDF(photo.blob);
+                            
+                            // Calcola dimensioni "object-fit: contain"
+                            let thumbWidth, thumbHeight;
+                            if (width > height) { // Landscape
+                                thumbWidth = boxSize;
+                                thumbHeight = boxSize * (height / width);
+                            } else { // Portrait or Square
+                                thumbHeight = boxSize;
+                                thumbWidth = boxSize * (width / height);
+                            }
+                            
+                            // Calcola offset per centrare l'immagine nel box
+                            const xOffset = (boxSize - thumbWidth) / 2;
+                            const yOffset = (boxSize - thumbHeight) / 2;
+                            
+                            // Controlla se c'è spazio orizzontale
+                            if (x + boxSize > margin + contentWidth) {
+                                x = margin;
+                                y += (boxSize + padding);
+                            }
+                            
+                            // Controlla se c'è spazio verticale
+                            checkPageBreak(boxSize + padding);
+                            
+                            // *** CORREZIONE 2 (continua): Non serve più splittare il mimeType ***
+                            // const format = mimeType.split('/')[1].toUpperCase(); // VECCHIO
+                            
+                            // Aggiungi l'immagine centrata
+                            doc.addImage(dataUrl, format, x + xOffset, y + yOffset, thumbWidth, thumbHeight);
+                            
+                            // Disegna un bordo grigio chiaro
+                            doc.setDrawColor(200, 200, 200);
+                            doc.rect(x, y, boxSize, boxSize); // Disegna il box
+                            
+                            x += (boxSize + padding);
+                            
+                        } catch (imgErr) {
+                            console.error("Errore processamento immagine per PDF:", imgErr);
+                            // Disegna un box sostitutivo
+                            if (x + boxSize > margin + contentWidth) { x = margin; y += (boxSize + padding); }
+                            checkPageBreak(boxSize + padding);
+                            
+                            doc.setDrawColor(255, 0, 0); // Bordo rosso
+                            doc.rect(x, y, boxSize, boxSize);
+                            doc.setFontSize(8);
+                            doc.text("Errore Img", x + 5, y + (boxSize / 2));
+                            
+                            x += (boxSize + padding);
+                        }
+                    }
+                    // Spazio dopo la griglia
+                    y += (boxSize + padding); 
+                };
+                
+
+                // 4. COSTRUISCI IL PDF
+                
+                // --- Pagina 1: Intestazione e Dati Generali ---
+                doc.setFontSize(20);
+                doc.setFont(undefined, 'bold');
+                doc.text(`Riepilogo Rilievo #${report.id}`, margin, y);
+                y += titleSpacing;
+                
+                doc.setFontSize(11);
+                addDataPair("Data e Ora:", new Date(report.dateTime).toLocaleString('it-IT', { dateStyle: 'full', timeStyle: 'short' }));
+                addDataPair("Stato:", report.status);
+                
+                // --- Sezione Planimetria (anticipata) ---
+                addTitle("Planimetria e Misure", 1);
+                
+                addTitle(`Punti Definiti (${points.length})`, 2);
+                points.sort((a, b) => a.label.localeCompare(b.label));
+                checkPageBreak(points.length * (lineSpacing / 1.5));
+                doc.setFontSize(9);
+                doc.setFont(undefined, 'normal');
+                let pointsText = points.map(p => `- ${p.label} (${p.type})`).join('\n');
+                addText(pointsText, margin + 5, 9);
+                y += 5; // Spazio
+                
+                addTitle(`Misure Rilevate (${measures.length})`, 2);
+                measures.sort((a,b) => a.p1_label.localeCompare(b.p1_label) || a.p2_label.localeCompare(b.p2_label));
+                checkPageBreak(measures.length * (lineSpacing / 1.5));
+                doc.setFontSize(9);
+                doc.setFont('courier', 'normal'); // Monospace per allineamento
+                
+                for (const m of measures) {
+                    checkPageBreak(lineSpacing / 2); // Più compatto
+                    let line = `${m.p1_label.padEnd(15)} -- ${m.p2_label.padEnd(15)} : ${m.distance.toFixed(2)} m`;
+                    doc.text(line, margin + 5, y);
+                    y += (lineSpacing / 1.8);
+                }
+                doc.setFont('helvetica', 'normal'); // Resetta il font
+                
+                
+                // --- Sezione Foto Scena e Infra ---
+                addTitle("Foto Scena e Infrastrutture", 1);
+                
+                const scenePhotos = allPhotos.filter(p => p.category === 'scena' && p.associatedId === 0);
+                await addPhotoGrid(scenePhotos, "Foto Panoramiche Scena");
+
+                if (infrastructure.length > 0) {
+                    const infraPhotos = allPhotos.filter(p => p.category === 'infra');
+                    await addPhotoGrid(infraPhotos, "Foto Danni Infrastrutture");
+                }
+
+                // --- Sezione Veicoli e Persone ---
+                addTitle("Veicoli e Persone Coinvolte", 1);
+                
+                const pedoni = people.filter(p => p.type === 'pedone');
+                const testimoni = people.filter(p => p.type === 'testimone');
+
+                for (const vehicle of vehicles) {
+                    addTitle(`Veicolo ${vehicle.label}`, 2);
+                    
+                    const damagePhotos = allPhotos.filter(p => p.category === 'danno' && p.associatedId === vehicle.id);
+                    await addPhotoGrid(damagePhotos, "Foto Danni");
+
+                    const docPhotos = allPhotos.filter(p => p.category === 'doc_veicolo' && p.associatedId === vehicle.id);
+                    await addPhotoGrid(docPhotos, "Foto Documenti Veicolo");
+
+                    const vehiclePeople = people.filter(p => p.vehicleId === vehicle.id);
+                    vehiclePeople.sort((a, b) => (a.type === 'conducente' ? -1 : 1));
+
+                    for (const person of vehiclePeople) {
+                        const personPhotos = allPhotos.filter(p => p.category === 'doc_persona' && p.associatedId === person.id);
+                        // Titolo corretto
+                        // *** CORREZIONE 3: Argomenti invertiti ***
+                        await addPhotoGrid(personPhotos, `Documenti ${person.label} ${person.type === 'conducente' ? '(Conducente)' : '(Passeggero)'}`);
+                    }
+                }
+                
+                // --- Pedoni e Testimoni ---
+                if (pedoni.length > 0) {
+                     addTitle("Pedoni Coinvolti", 1);
+                     for (const pedone of pedoni) {
+                        const personPhotos = allPhotos.filter(p => p.category === 'doc_persona' && p.associatedId === pedone.id);
+                        // *** CORREZIONE 4: Argomenti invertiti ***
+                        await addPhotoGrid(personPhotos, `Documenti ${pedone.label}`);
+                    }
+                }
+                
+                if (testimoni.length > 0) {
+                     addTitle("Testimoni", 1);
+                     for (const test of testimoni) {
+                        const personPhotos = allPhotos.filter(p => p.category === 'doc_persona' && p.associatedId === test.id);
+                        // *** CORREZIONE 5: Argomenti invertiti ***
+                        await addPhotoGrid(personPhotos, `Documenti ${test.label}`);
+                    }
+                }
+
+                // 5. Salva il PDF
+                // doc.save(`Rilievo_${reportId}_Riepilogo.pdf`); // VECCHIO: Salva direttamente
+                
+                // --- NUOVO: Mostra in anteprima (MODIFICATO) ---
+                // const pdfDataUri = doc.output('datauristring'); // VECCHIO
+                const pdfBlob = doc.output('blob');
+                const pdfUrl = URL.createObjectURL(pdfBlob);
+                
+                // Carica i dati nell'iframe e mostra il modal
+                const modalPdfPreview = document.getElementById('modal-pdf-preview');
+                const pdfIframe = document.getElementById('pdf-iframe');
+                
+                // pdfIframe.src = pdfDataUri; // VECCHIO
+                pdfIframe.src = pdfUrl; // NUOVO
+                modalPdfPreview.classList.add('active');
+                // --- FINE NUOVO ---
+
+                // Chiudi il modal "Attendere"
+                modalOverlay.classList.remove('active');
+                // Mostra successo (Rimosso, l'anteprima è il successo)
+                // await showModal("PDF generato con successo.\nIl download è stato avviato.", "Successo");
+
+            } catch (error) {
+                console.error("Errore durante la generazione del PDF:", error);
+                // Assicura che il modal di attesa sia chiuso in caso di errore
+                modalOverlay.classList.remove('active');
+                showModal(`Generazione PDF fallita: ${error.message}`, "Errore");
+            }
+        }
+
+
+        // --- 14. Inizializzazione App ---
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // --- PASSO 1: Collega i listener statici SUBITO ---
+            
+            // Listener pulsante Home
+            document.getElementById('btn-new-report').addEventListener('click', () => {
+                navigateTo('schermata-wizard');
+            });
+            
+            // Listener per il pulsante di conferma finale sul riepilogo
+            document.getElementById('btn-confirm-complete').addEventListener('click', async () => {
+                if (await showConfirmModal("Sei sicuro di voler contrassegnare questo rilievo come 'Completato'?", "Conferma Finale")) {
+                    try {
+                        await db.reports.update(currentReportId, { status: 'completed' });
+                        revokeSummaryUrls(); // Pulisci URL
+                        navigateTo('schermata-home');
+                        showModal("Rilievo completato e salvato.", "Successo");
+                    } catch (error) {
+                        console.error("Errore nel completare il rilievo:", error);
+                        showModal("Impossibile salvare lo stato 'completato'.", "Errore");
+                    }
+                }
+            });
+
+            // Listener per MODAL ESPORTAZIONE TESTO (per lo ZIP)
+            const modalExport = document.getElementById('modal-export-legenda');
+            const modalExportCloseBtn = document.getElementById('modal-export-close-btn');
+            const modalExportCopyBtn = document.getElementById('modal-export-copy-btn');
+            const exportTextarea = document.getElementById('export-legenda-text');
+
+            modalExportCloseBtn.addEventListener('click', () => modalExport.classList.remove('active'));
+
+            modalExportCopyBtn.addEventListener('click', () => {
+                try {
+                    exportTextarea.select();
+                    // Fallback robusto (consigliato in iFrame)
+                    document.execCommand('copy');
+                    window.getSelection().removeAllRanges();
+                    showModal("Testo copiato negli appunti!", "Successo");
+                } catch (err) {
+                    console.error("Errore copia:", err);
+                    showModal("Impossibile copiare il testo. Potresti doverlo fare manualmente.", "Errore");
+                }
+            });
+
+            // --- NUOVO: Listener per MODAL ANTEPRIMA PDF ---
+            const modalPdfPreview = document.getElementById('modal-pdf-preview');
+            const modalPdfCloseBtn = document.getElementById('modal-pdf-close-btn');
+            const pdfIframe = document.getElementById('pdf-iframe');
+
+            modalPdfCloseBtn.addEventListener('click', () => {
+                modalPdfPreview.classList.remove('active');
+                
+                // --- NUOVO: Revoke URL per liberare memoria ---
+                const oldUrl = pdfIframe.src;
+                if (oldUrl.startsWith('blob:')) {
+                    URL.revokeObjectURL(oldUrl);
+                }
+                // --- FINE NUOVO ---
+
+                // Pulisci l'iframe per liberare memoria
+                pdfIframe.src = 'about:blank'; 
+            });
+            // --- FINE NUOVO ---
+
+            // --- NUOVO: Listener per MODAL LIGHTBOX FOTO ---
+            const modalLightbox = document.getElementById('modal-lightbox');
+            const lightboxImage = document.getElementById('lightbox-image');
+            const lightboxCloseBtn = document.getElementById('lightbox-close-btn');
+
+            // Assegna la funzione a `window` per renderla accessibile da `onclick`
+            window.showLightbox = (imageUrl) => {
+                if (!modalLightbox || !lightboxImage) {
+                    console.error("Elementi Lightbox non trovati!");
+                    return;
+                }
+                lightboxImage.src = imageUrl;
+                modalLightbox.classList.add('active');
+                lucide.createIcons(); // Assicura che l'icona X sia renderizzata
+            };
+
+            const closeLightbox = () => {
+                modalLightbox.classList.remove('active');
+                lightboxImage.src = 'about:blank'; // Pulisci per liberare memoria
+            };
+
+            lightboxCloseBtn.addEventListener('click', closeLightbox);
+            // Chiudi cliccando sullo sfondo (ma non sull'immagine)
+            modalLightbox.addEventListener('click', (e) => {
+                if (e.target.id === 'modal-lightbox') { // Cliccato solo lo sfondo
+                    closeLightbox();
+                }
+            });
+            // --- FINE NUOVO ---
+
+
+            // --- PASSO 2: Apri il database e avvia l'app ---
+            db.open().then(() => {
+                console.log("Database aperto con successo.");
+                
+                // Solo ora inizializza la prima schermata (che carica dati dal DB)
+                navigateTo('schermata-home');
+                lucide.createIcons();
+                registerServiceWorker();
+                
+            }).catch(err => {
+                // ERRORE CRITICO
+                console.error("Impossibile aprire il database:", err);
+                if (err.message.includes("Versions must be specified in ascending order")) {
+                    showModal("Errore Critico: Definizioni del database in conflitto. Per favore, pulisci i dati del sito (F12 -> Application -> Clear site data) e ricarica.", "Errore Database");
+                } else {
+                    showModal(`Errore critico del database: ${err.message}`, "Errore");
+                }
+            });
+        });
+        
+    </script>
+</body>
+</html>
+
