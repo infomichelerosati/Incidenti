@@ -19,7 +19,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
     <!-- Icone PWA per iOS -->
-    <link rel="apple-touch-icon" sizes="192x192" href="./icon-192.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="./icon-192.png"> <!-- MODIFICATO PERCORSO -->
     
     <!-- Stile Neumorphism Personalizzato -->
     <style>
@@ -157,6 +157,7 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
+            cursor: pointer; /* Aggiunto per indicare che è cliccabile */
         }
         .delete-photo-btn {
             position: absolute;
@@ -272,6 +273,7 @@
             object-fit: cover;
             border-radius: 8px;
             box-shadow: 4px 4px 8px #c5c9cf, -4px -4px 8px #ffffff;
+            cursor: pointer; /* Aggiunto per indicare che è cliccabile */
         }
         .summary-data-pair {
             display: flex;
@@ -299,6 +301,41 @@
             font-family: 'Courier New', Courier, monospace;
             resize: vertical;
             height: 250px;
+        }
+        
+        /* ==== NUOVO: STILI LIGHTBOX ==== */
+        .modal-lightbox {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 200; /* Sopra tutto */
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s;
+            padding: 1rem;
+        }
+        .modal-lightbox.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-lightbox img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .lightbox-close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 210;
         }
 
     </style>
@@ -491,11 +528,19 @@
                 <div id="vehicle-damage-photos" class="grid grid-cols-4 gap-2 mb-4">
                     <!-- Foto caricate qui -->
                 </div>
-                <label class="neum-btn neum-btn-primary w-full text-center cursor-pointer">
-                    <i data-lucide="camera" class="w-5 h-5 inline-block mr-2"></i>
-                    Scatta/Carica Foto Danni
-                    <input type="file" id="input-damage-photo" class="hidden" accept="image/*" multiple>
-                </label>
+                <!-- *** MODIFICATO: Pulsanti sdoppiati Scatta/Carica *** -->
+                <div class="grid grid-cols-2 gap-4">
+                    <label class="neum-btn neum-btn-primary w-full text-center cursor-pointer flex items-center justify-center">
+                        <i data-lucide="camera" class="w-5 h-5 inline-block mr-2"></i>
+                        Scatta Foto
+                        <input type="file" id="input-damage-photo-capture" class="hidden" accept="image/*" capture="environment">
+                    </label>
+                    <label class="neum-btn w-full text-center cursor-pointer flex items-center justify-center">
+                        <i data-lucide="upload" class="w-5 h-5 inline-block mr-2"></i>
+                        Carica Foto
+                        <input type="file" id="input-damage-photo-upload" class="hidden" accept="image/*" multiple>
+                    </label>
+                </div>
             </div>
             
             <!-- Foto Documenti Veicolo -->
@@ -504,11 +549,19 @@
                 <div id="vehicle-doc-photos" class="grid grid-cols-4 gap-2 mb-4">
                     <!-- Foto caricate qui -->
                 </div>
-                <label class="neum-btn w-full text-center cursor-pointer">
-                    <i data-lucide="file-text" class="w-5 h-5 inline-block mr-2"></i>
-                    Scatta/Carica Documenti
-                    <input type="file" id="input-vehicle-doc-photo" class="hidden" accept="image/*" multiple>
-                </label>
+                <!-- *** MODIFICATO: Pulsanti sdoppiati Scatta/Carica *** -->
+                <div class="grid grid-cols-2 gap-4">
+                    <label class="neum-btn neum-btn-primary w-full text-center cursor-pointer flex items-center justify-center">
+                        <i data-lucide="camera" class="w-5 h-5 inline-block mr-2"></i>
+                        Scatta Doc
+                        <input type="file" id="input-vehicle-doc-photo-capture" class="hidden" accept="image/*" capture="environment">
+                    </label>
+                    <label class="neum-btn w-full text-center cursor-pointer flex items-center justify-center">
+                        <i data-lucide="upload" class="w-5 h-5 inline-block mr-2"></i>
+                        Carica Doc
+                        <input type="file" id="input-vehicle-doc-photo-upload" class="hidden" accept="image/*" multiple>
+                    </label>
+                </div>
             </div>
         </div>
 
@@ -522,11 +575,19 @@
                 <div id="person-doc-photos" class="grid grid-cols-4 gap-2 mb-4">
                     <!-- Foto caricate qui -->
                 </div>
-                <label class="neum-btn neum-btn-primary w-full text-center cursor-pointer">
-                    <i data-lucide="user" class="w-5 h-5 inline-block mr-2"></i>
-                    Scatta/Carica Documenti
-                    <input type="file" id="input-person-doc-photo" class="hidden" accept="image/*" multiple>
-                </label>
+                <!-- *** MODIFICATO: Pulsanti sdoppiati Scatta/Carica *** -->
+                <div class="grid grid-cols-2 gap-4">
+                    <label class="neum-btn neum-btn-primary w-full text-center cursor-pointer flex items-center justify-center">
+                        <i data-lucide="camera" class="w-5 h-5 inline-block mr-2"></i>
+                        Scatta Doc
+                        <input type="file" id="input-person-doc-photo-capture" class="hidden" accept="image/*" capture="environment">
+                    </label>
+                    <label class="neum-btn w-full text-center cursor-pointer flex items-center justify-center">
+                        <i data-lucide="upload" class="w-5 h-5 inline-block mr-2"></i>
+                        Carica Doc
+                        <input type="file" id="input-person-doc-photo-upload" class="hidden" accept="image/*" multiple>
+                    </label>
+                </div>
             </div>
         </div>
 
@@ -540,11 +601,19 @@
                 <div id="generic-photos-grid" class="grid grid-cols-4 gap-2 mb-4">
                     <!-- Foto caricate qui -->
                 </div>
-                <label class="neum-btn neum-btn-primary w-full text-center cursor-pointer">
-                    <i data-lucide="camera" class="w-5 h-5 inline-block mr-2"></i>
-                    Scatta/Carica Foto
-                    <input type="file" id="input-generic-photo" class="hidden" accept="image/*" multiple>
-                </label>
+                <!-- *** MODIFICATO: Pulsanti sdoppiati Scatta/Carica *** -->
+                <div class="grid grid-cols-2 gap-4">
+                    <label class="neum-btn neum-btn-primary w-full text-center cursor-pointer flex items-center justify-center">
+                        <i data-lucide="camera" class="w-5 h-5 inline-block mr-2"></i>
+                        Scatta Foto
+                        <input type="file" id="input-generic-photo-capture" class="hidden" accept="image/*" capture="environment">
+                    </label>
+                    <label class="neum-btn w-full text-center cursor-pointer flex items-center justify-center">
+                        <i data-lucide="upload" class="w-5 h-5 inline-block mr-2"></i>
+                        Carica Foto
+                        <input type="file" id="input-generic-photo-upload" class="hidden" accept="image/*" multiple>
+                    </label>
+                </div>
             </div>
         </div>
 
@@ -678,16 +747,15 @@
             </div>
         </div>
     </div>
-
-    <!-- ==== NUOVO: MODAL LIGHTBOX FOTO ==== -->
-    <div id="modal-lightbox" class="modal-overlay" style="z-index: 200; background-color: rgba(0, 0, 0, 0.85); padding: 0;">
-        <button id="lightbox-close-btn" class="neum-icon-btn neum-btn-danger" style="position: fixed; top: 20px; right: 20px; z-index: 202; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">
+    
+    <!-- ==== NUOVO: MODAL LIGHTBOX ==== -->
+    <div id="modal-lightbox" class="modal-lightbox">
+        <!-- Bottone Chiusura -->
+        <button id="lightbox-close-btn" class="neum-icon-btn neum-btn-danger lightbox-close-btn">
             <i data-lucide="x" class="w-6 h-6"></i>
         </button>
-        <!-- Contenitore per l'immagine, permette lo scroll/pan se l'immagine è zoomata -->
-        <div class="w-full h-full flex items-center justify-center p-4">
-             <img id="lightbox-image" src="" alt="Anteprima foto" class="max-w-full max-h-full rounded-lg shadow-2xl" style="object-fit: contain;">
-        </div>
+        <!-- Immagine (impostata da JS) -->
+        <img id="lightbox-image" src="" alt="Anteprima foto">
     </div>
 
 
@@ -732,7 +800,7 @@
         let navigationStack = ['schermata-home'];
         
         // Array per tenere traccia degli URL delle anteprime per pulizia memoria
-        let summaryObjectUrls = [];
+        let photoObjectUrls = []; // RINOMINATO
 
 
         // --- 3. Utility Navigazione (Modulo 4.1) ---
@@ -799,24 +867,20 @@
             lucide.createIcons();
         }
         
-        // Funzione per pulire gli URL delle anteprime
-        function revokeSummaryUrls() {
-            console.log(`Pulizia di ${summaryObjectUrls.length} URL oggetto...`);
-            summaryObjectUrls.forEach(url => URL.revokeObjectURL(url));
-            summaryObjectUrls = [];
+        // Funzione per pulire gli URL delle anteprime (RINOMINATA)
+        function revokePhotoUrls() {
+            console.log(`Pulizia di ${photoObjectUrls.length} URL oggetto...`);
+            photoObjectUrls.forEach(url => URL.revokeObjectURL(url));
+            photoObjectUrls = [];
         }
 
         function navigateBack() {
             if (navigationStack.length > 1) {
                 
-                // *** MODIFICATO: Pulisci URL anche uscendo dalle schermate foto ***
+                // Se stiamo uscendo da una schermata foto o riepilogo, puliamo gli URL
                 const currentScreenId = navigationStack[navigationStack.length - 1];
-                if (currentScreenId === 'schermata-riepilogo' ||
-                    currentScreenId === 'schermata-foto-veicolo' ||
-                    currentScreenId === 'schermata-foto-persona' ||
-                    currentScreenId === 'schermata-foto-generiche') 
-                {
-                    revokeSummaryUrls();
+                if (currentScreenId === 'schermata-riepilogo' || currentScreenId.startsWith('schermata-foto')) {
+                    revokePhotoUrls();
                 }
 
                 navigationStack.pop(); // Rimuovi schermata corrente
@@ -839,6 +903,7 @@
                         loadDashboard(currentReportId);
                         appTitle.textContent = `Rilievo #${currentReportId}`;
                         break;
+                    // Altre schermate (es. wizard) non necessitano ricaricamento
                 }
                 lucide.createIcons();
             }
@@ -941,10 +1006,6 @@
             });
         }
 
-        // --- 5.5 NUOVO: Lightbox Utility ---
-        // La funzione viene assegnata a `window` in DOMContentLoaded
-        // per essere accessibile dagli `onclick` inline.
-        
         // --- 6. Logica Schermata 1: Home (Modulo 4.2) ---
         const elencoRilievi = document.getElementById('elenco-rilievi');
         
@@ -1532,6 +1593,9 @@
 
         // Funzione unica per ricaricare la galleria attiva
         function reloadCurrentPhotoGallery() {
+            // Pulisce i vecchi URL blob dalla memoria
+            revokePhotoUrls();
+            
             const activeScreen = document.querySelector('.screen.active').id;
             
             switch(activeScreen) {
@@ -1564,41 +1628,37 @@
             }
             
             photos.forEach(photo => {
-                // *** MODIFICATO PER LIGHTBOX ***
                 const url = URL.createObjectURL(photo.blob);
-                summaryObjectUrls.push(url); // Aggiungi alla lista di pulizia
+                photoObjectUrls.push(url); // Salva URL per pulizia
                 
                 const thumb = document.createElement('div');
                 thumb.className = 'photo-thumbnail';
                 thumb.innerHTML = `
-                    <img src="${url}" alt="Foto" class="cursor-pointer"> <!-- NUOVO: cursor-pointer -->
+                    <img src="${url}" alt="Foto">
                     <button class="delete-photo-btn" data-photo-id="${photo.id}">
                         <i data-lucide="x" class="w-4 h-4 text-white"></i>
                     </button>
                 `;
                 
-                const imgEl = thumb.querySelector('img');
+                // Pulisce la URL dell'oggetto (RIMOSSO DA QUI, GESTITO CENTRALMENTE)
+                // thumb.querySelector('img').onload = () => URL.revokeObjectURL(url);
                 
-                // RIMOSSO: La pulizia ora è gestita da revokeSummaryUrls()
-                // imgEl.onload = () => URL.revokeObjectURL(url); 
-                
-                // NUOVO: Listener per lightbox
-                imgEl.addEventListener('click', () => {
-                    // Chiama la funzione globale definita in DOMContentLoaded
-                    if(window.showLightbox) {
-                        window.showLightbox(url);
-                    }
-                });
-                
-                // Listener per eliminare foto
+                // Listener per ELIMINARE foto
                 thumb.querySelector('.delete-photo-btn').addEventListener('click', async (e) => {
                     e.stopPropagation();
                     const photoId = parseInt(e.currentTarget.dataset.photoId);
                     if (await showConfirmModal("Eliminare questa foto?", "Conferma")) {
                         await db.photos.delete(photoId);
-                        reloadCurrentPhotoGallery(); // Ricarica la galleria (e rigenera gli URL)
+                        reloadCurrentPhotoGallery();
                     }
                 });
+                
+                // Listener per VEDERE foto (Lightbox)
+                thumb.querySelector('img').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    showLightbox(url); // Mostra l'URL blob già generato
+                });
+
                 
                 grid.appendChild(thumb);
             });
@@ -1606,55 +1666,70 @@
         }
 
         // Schermata 4: Foto Veicolo
-        const inputDamagePhoto = document.getElementById('input-damage-photo');
-        const inputVehicleDocPhoto = document.getElementById('input-vehicle-doc-photo');
-        
         function loadVehiclePhotoScreen(vehicleId, title) {
             document.getElementById('vehicle-photo-title').textContent = title;
             currentPhotoContext = { category: 'danno', associatedId: vehicleId }; // Contesto multiplo
             
-            // Pulisci URL vecchi prima di caricare i nuovi
-            revokeSummaryUrls(); 
             loadPhotoGallery(vehicleId, 'danno', 'vehicle-damage-photos');
             loadPhotoGallery(vehicleId, 'doc_veicolo', 'vehicle-doc-photos');
 
-            // Reset e aggiunta listener
-            inputDamagePhoto.value = null;
-            inputDamagePhoto.onchange = (e) => handlePhotoUpload(e.target.files, 'danno', vehicleId);
+            // --- MODIFICATO PER GESTIRE CAPTURE E UPLOAD SEPARATI ---
+            const inputDamagePhotoCapture = document.getElementById('input-damage-photo-capture');
+            const inputDamagePhotoUpload = document.getElementById('input-damage-photo-upload');
+            const inputVehicleDocPhotoCapture = document.getElementById('input-vehicle-doc-photo-capture');
+            const inputVehicleDocPhotoUpload = document.getElementById('input-vehicle-doc-photo-upload');
+
+            inputDamagePhotoCapture.value = null;
+            inputDamagePhotoCapture.onchange = (e) => handlePhotoUpload(e.target.files, 'danno', vehicleId);
             
-            inputVehicleDocPhoto.value = null;
-            inputVehicleDocPhoto.onchange = (e) => handlePhotoUpload(e.target.files, 'doc_veicolo', vehicleId);
+            inputDamagePhotoUpload.value = null;
+            inputDamagePhotoUpload.onchange = (e) => handlePhotoUpload(e.target.files, 'danno', vehicleId);
+            
+            inputVehicleDocPhotoCapture.value = null;
+            inputVehicleDocPhotoCapture.onchange = (e) => handlePhotoUpload(e.target.files, 'doc_veicolo', vehicleId);
+
+            inputVehicleDocPhotoUpload.value = null;
+            inputVehicleDocPhotoUpload.onchange = (e) => handlePhotoUpload(e.target.files, 'doc_veicolo', vehicleId);
+            // --- FINE MODIFICA ---
         }
         
         // Schermata 5: Foto Persona
-        const inputPersonDocPhoto = document.getElementById('input-person-doc-photo');
-
         function loadPersonPhotoScreen(personId, title) {
             document.getElementById('person-photo-title').textContent = title;
             currentPhotoContext = { category: 'doc_persona', associatedId: personId };
             
-            // Pulisci URL vecchi prima di caricare i nuovi
-            revokeSummaryUrls();
             loadPhotoGallery(personId, 'doc_persona', 'person-doc-photos');
             
-            inputPersonDocPhoto.value = null;
-            inputPersonDocPhoto.onchange = (e) => handlePhotoUpload(e.target.files, 'doc_persona', personId);
+            // --- MODIFICATO PER GESTIRE CAPTURE E UPLOAD SEPARATI ---
+            const inputPersonDocPhotoCapture = document.getElementById('input-person-doc-photo-capture');
+            const inputPersonDocPhotoUpload = document.getElementById('input-person-doc-photo-upload');
+
+            inputPersonDocPhotoCapture.value = null;
+            inputPersonDocPhotoCapture.onchange = (e) => handlePhotoUpload(e.target.files, 'doc_persona', personId);
+
+            inputPersonDocPhotoUpload.value = null;
+            inputPersonDocPhotoUpload.onchange = (e) => handlePhotoUpload(e.target.files, 'doc_persona', personId);
+            // --- FINE MODIFICA ---
         }
         
         // Schermata 6: Foto Generiche
-        const inputGenericPhoto = document.getElementById('input-generic-photo');
-
         function loadGenericPhotoScreen(category, associatedId, title, subtitle) {
             document.getElementById('generic-photo-title').textContent = title;
             document.getElementById('generic-photo-subtitle').textContent = subtitle;
             currentPhotoContext = { category, associatedId };
             
-            // Pulisci URL vecchi prima di caricare i nuovi
-            revokeSummaryUrls();
             loadPhotoGallery(associatedId, category, 'generic-photos-grid');
             
-            inputGenericPhoto.value = null;
-            inputGenericPhoto.onchange = (e) => handlePhotoUpload(e.target.files, category, associatedId);
+            // --- MODIFICATO PER GESTIRE CAPTURE E UPLOAD SEPARATI ---
+            const inputGenericPhotoCapture = document.getElementById('input-generic-photo-capture');
+            const inputGenericPhotoUpload = document.getElementById('input-generic-photo-upload');
+            
+            inputGenericPhotoCapture.value = null;
+            inputGenericPhotoCapture.onchange = (e) => handlePhotoUpload(e.target.files, category, associatedId);
+
+            inputGenericPhotoUpload.value = null;
+            inputGenericPhotoUpload.onchange = (e) => handlePhotoUpload(e.target.files, category, associatedId);
+            // --- FINE MODIFICA ---
         }
         
         // --- 10. Logica Schermata 7: Punti (Modulo 4.11) ---
@@ -2065,9 +2140,9 @@
             for (const photo of photos) {
                 // Crea l'URL e lo salva per la pulizia
                 const url = URL.createObjectURL(photo.blob);
-                summaryObjectUrls.push(url);
-                // *** MODIFICATO: Aggiunto onclick per lightbox ***
-                gridHtml += `<img src="${url}" class="summary-thumbnail cursor-pointer" alt="Foto ${title}" onclick="showLightbox('${url}')">`;
+                photoObjectUrls.push(url);
+                // Aggiunto onclick per lightbox
+                gridHtml += `<img src="${url}" class="summary-thumbnail" alt="Foto ${title}" onclick="showLightbox('${url}')">`;
             }
             gridHtml += `</div>`;
             return gridHtml;
@@ -2078,7 +2153,7 @@
             content.innerHTML = '<p class="text-center text-gray-500">Caricamento dati...</p>';
             
             // Pulisci eventuali URL vecchi
-            revokeSummaryUrls();
+            revokePhotoUrls();
             
             try {
                 // Fetch di tutti i dati in parallelo
@@ -2372,11 +2447,6 @@
         /**
          * NUOVO: Converte Blob in Data URL, applicando la rotazione EXIF
          * e restituendo le dimensioni corrette.
-         *
-         * *** CORREZIONE 1: Gestione MimeType per toDataURL ***
-         * `toDataURL` accetta il secondo parametro (qualità) SOLO per 'image/jpeg' o 'image/webp'.
-         * Usarlo con 'image/png' può causare errori o essere ignorato.
-         * Ora forziamo JPEG per coerenza, tranne per i PNG.
          */
         function processImageForPDF(blob) {
             return new Promise((resolve, reject) => {
@@ -2393,7 +2463,6 @@
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0);
                         
-                        // *** INIZIO CORREZIONE 1 ***
                         let newDataUrl;
                         let mimeType;
                         let format;
@@ -2408,7 +2477,6 @@
                             mimeType = 'image/jpeg';
                             format = 'JPEG';
                         }
-                        // *** FINE CORREZIONE 1 ***
                         
                         URL.revokeObjectURL(url);
                         resolve({
@@ -2534,8 +2602,6 @@
                     y += 2; // Spazio extra
                 };
                 
-                // Helper per convertire Blob in Base64 Data URL (SPOSTATO FUORI)
-                // const blobToDataURL = ...
                 
                 // --- HELPER GRIGLIA FOTO (MODIFICATO E CORRETTO) ---
                 const addPhotoGrid = async (photos, title) => {
@@ -2555,8 +2621,6 @@
                     
                     for (const photo of photos) {
                         try {
-                            // Usa la NUOVA funzione di processamento
-                            // *** CORREZIONE 2: Usiamo 'format' invece di 'mimeType' ***
                             const { dataUrl, width, height, format } = await processImageForPDF(photo.blob);
                             
                             // Calcola dimensioni "object-fit: contain"
@@ -2581,9 +2645,6 @@
                             
                             // Controlla se c'è spazio verticale
                             checkPageBreak(boxSize + padding);
-                            
-                            // *** CORREZIONE 2 (continua): Non serve più splittare il mimeType ***
-                            // const format = mimeType.split('/')[1].toUpperCase(); // VECCHIO
                             
                             // Aggiungi l'immagine centrata
                             doc.addImage(dataUrl, format, x + xOffset, y + yOffset, thumbWidth, thumbHeight);
@@ -2683,8 +2744,6 @@
 
                     for (const person of vehiclePeople) {
                         const personPhotos = allPhotos.filter(p => p.category === 'doc_persona' && p.associatedId === person.id);
-                        // Titolo corretto
-                        // *** CORREZIONE 3: Argomenti invertiti ***
                         await addPhotoGrid(personPhotos, `Documenti ${person.label} ${person.type === 'conducente' ? '(Conducente)' : '(Passeggero)'}`);
                     }
                 }
@@ -2694,7 +2753,6 @@
                      addTitle("Pedoni Coinvolti", 1);
                      for (const pedone of pedoni) {
                         const personPhotos = allPhotos.filter(p => p.category === 'doc_persona' && p.associatedId === pedone.id);
-                        // *** CORREZIONE 4: Argomenti invertiti ***
                         await addPhotoGrid(personPhotos, `Documenti ${pedone.label}`);
                     }
                 }
@@ -2703,15 +2761,11 @@
                      addTitle("Testimoni", 1);
                      for (const test of testimoni) {
                         const personPhotos = allPhotos.filter(p => p.category === 'doc_persona' && p.associatedId === test.id);
-                        // *** CORREZIONE 5: Argomenti invertiti ***
                         await addPhotoGrid(personPhotos, `Documenti ${test.label}`);
                     }
                 }
 
                 // 5. Salva il PDF
-                // doc.save(`Rilievo_${reportId}_Riepilogo.pdf`); // VECCHIO: Salva direttamente
-                
-                // --- NUOVO: Mostra in anteprima (MODIFICATO) ---
                 // const pdfDataUri = doc.output('datauristring'); // VECCHIO
                 const pdfBlob = doc.output('blob');
                 const pdfUrl = URL.createObjectURL(pdfBlob);
@@ -2720,15 +2774,11 @@
                 const modalPdfPreview = document.getElementById('modal-pdf-preview');
                 const pdfIframe = document.getElementById('pdf-iframe');
                 
-                // pdfIframe.src = pdfDataUri; // VECCHIO
                 pdfIframe.src = pdfUrl; // NUOVO
                 modalPdfPreview.classList.add('active');
-                // --- FINE NUOVO ---
-
+                
                 // Chiudi il modal "Attendere"
                 modalOverlay.classList.remove('active');
-                // Mostra successo (Rimosso, l'anteprima è il successo)
-                // await showModal("PDF generato con successo.\nIl download è stato avviato.", "Successo");
 
             } catch (error) {
                 console.error("Errore durante la generazione del PDF:", error);
@@ -2740,6 +2790,29 @@
 
 
         // --- 14. Inizializzazione App ---
+        
+        // --- NUOVO: Logica Lightbox ---
+        const modalLightbox = document.getElementById('modal-lightbox');
+        const lightboxImage = document.getElementById('lightbox-image');
+        const lightboxCloseBtn = document.getElementById('lightbox-close-btn');
+
+        // Funzione per mostrare il lightbox (chiamata dall'HTML)
+        window.showLightbox = (imageUrl) => {
+            lightboxImage.src = imageUrl;
+            modalLightbox.classList.add('active');
+        };
+        
+        // Funzione per chiudere il lightbox
+        const closeLightbox = () => {
+            modalLightbox.classList.remove('active');
+            lightboxImage.src = ''; // Pulisci per liberare memoria
+        };
+        
+        modalLightbox.addEventListener('click', closeLightbox);
+        lightboxCloseBtn.addEventListener('click', closeLightbox);
+        // --- FINE Logica Lightbox ---
+
+        
         document.addEventListener('DOMContentLoaded', () => {
             
             // --- PASSO 1: Collega i listener statici SUBITO ---
@@ -2754,7 +2827,7 @@
                 if (await showConfirmModal("Sei sicuro di voler contrassegnare questo rilievo come 'Completato'?", "Conferma Finale")) {
                     try {
                         await db.reports.update(currentReportId, { status: 'completed' });
-                        revokeSummaryUrls(); // Pulisci URL
+                        revokePhotoUrls(); // Pulisci URL
                         navigateTo('schermata-home');
                         showModal("Rilievo completato e salvato.", "Successo");
                     } catch (error) {
@@ -2802,36 +2875,6 @@
 
                 // Pulisci l'iframe per liberare memoria
                 pdfIframe.src = 'about:blank'; 
-            });
-            // --- FINE NUOVO ---
-
-            // --- NUOVO: Listener per MODAL LIGHTBOX FOTO ---
-            const modalLightbox = document.getElementById('modal-lightbox');
-            const lightboxImage = document.getElementById('lightbox-image');
-            const lightboxCloseBtn = document.getElementById('lightbox-close-btn');
-
-            // Assegna la funzione a `window` per renderla accessibile da `onclick`
-            window.showLightbox = (imageUrl) => {
-                if (!modalLightbox || !lightboxImage) {
-                    console.error("Elementi Lightbox non trovati!");
-                    return;
-                }
-                lightboxImage.src = imageUrl;
-                modalLightbox.classList.add('active');
-                lucide.createIcons(); // Assicura che l'icona X sia renderizzata
-            };
-
-            const closeLightbox = () => {
-                modalLightbox.classList.remove('active');
-                lightboxImage.src = 'about:blank'; // Pulisci per liberare memoria
-            };
-
-            lightboxCloseBtn.addEventListener('click', closeLightbox);
-            // Chiudi cliccando sullo sfondo (ma non sull'immagine)
-            modalLightbox.addEventListener('click', (e) => {
-                if (e.target.id === 'modal-lightbox') { // Cliccato solo lo sfondo
-                    closeLightbox();
-                }
             });
             // --- FINE NUOVO ---
 
