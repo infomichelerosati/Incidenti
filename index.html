@@ -741,10 +741,26 @@
                     <i data-lucide="x" class="w-6 h-6"></i>
                 </button>
             </div>
-            <!-- Contenuto (Iframe) -->
-            <div class="flex-1 p-2 bg-gray-500 rounded-b-2xl">
+            <!-- 
+                *** INIZIO MODIFICA ***
+                Contenitore (Iframe e Fallback Mobile) 
+            -->
+            <div class="flex-1 p-2 bg-gray-500 rounded-b-2xl relative overflow-hidden">
+                <!-- Iframe per Desktop -->
                 <iframe id="pdf-iframe" class="w-full h-full border-0 rounded-lg" src=""></iframe>
+                
+                <!-- Fallback per Mobile -->
+                <div id="pdf-download-mobile-container" class="absolute inset-0 flex flex-col items-center justify-center bg-gray-500 p-6" style="display: none;">
+                    <i data-lucide="file-text" class="w-16 h-16 text-white mb-4"></i>
+                    <h3 class="text-xl font-bold text-white text-center mb-4">Anteprima non disponibile</h3>
+                    <p class="text-white text-center mb-6">L'anteprima PDF non è supportata su questo dispositivo. Premi per scaricare il file.</p>
+                    <button id="pdf-download-btn" class="neum-btn neum-btn-primary py-4 px-8 text-lg flex items-center">
+                        <i data-lucide="download" class="w-6 h-6 mr-2"></i>
+                        Scarica PDF
+                    </button>
+                </div>
             </div>
+            <!-- *** FINE MODIFICA *** -->
         </div>
     </div>
     
@@ -1005,6 +1021,14 @@
                 modalConfirmBtn.addEventListener('click', confirmListener);
             });
         }
+
+        // *** INIZIO MODIFICA: Utility Rilevamento Mobile ***
+        // --- 5.5 Utility Rilevamento Mobile ---
+        function isMobileDevice() {
+            // Un controllo affidabile per la maggior parte dei dispositivi touch mobili
+            return (typeof window.orientation !== "undefined") || (navigator.userAgent.indexOf('IEMobile') !== -1);
+        }
+        // *** FINE MODIFICA ***
 
         // --- 6. Logica Schermata 1: Home (Modulo 4.2) ---
         const elencoRilievi = document.getElementById('elenco-rilievi');
@@ -2765,20 +2789,43 @@
                     }
                 }
 
-                // 5. Salva il PDF
-                // const pdfDataUri = doc.output('datauristring'); // VECCHIO
+                // *** INIZIO MODIFICA ***
+                // 5. Salva il PDF e gestisci l'anteprima
                 const pdfBlob = doc.output('blob');
-                const pdfUrl = URL.createObjectURL(pdfBlob);
-                
-                // Carica i dati nell'iframe e mostra il modal
+                const pdfUrl = URL.createObjectURL(pdfBlob); // URL per desktop
+                const fileName = `Rilievo_${reportId}_Riepilogo.pdf`; // Nome file per download
+
+                // Ottieni elementi del modal
                 const modalPdfPreview = document.getElementById('modal-pdf-preview');
                 const pdfIframe = document.getElementById('pdf-iframe');
+                const pdfDownloadContainer = document.getElementById('pdf-download-mobile-container');
+                const pdfDownloadBtn = document.getElementById('pdf-download-btn');
+
+                // Salva il blob e il nome sul bottone per il listener (usiamo proprietà custom)
+                pdfDownloadBtn._pdfBlob = pdfBlob;
+                pdfDownloadBtn._fileName = fileName;
+
+                if (isMobileDevice()) {
+                    // SU MOBILE: Nascondi iframe, mostra pulsante download
+                    console.log("Rilevato dispositivo mobile, mostro opzione download.");
+                    pdfIframe.style.display = 'none';
+                    pdfDownloadContainer.style.display = 'flex';
+                    // Assicura che l'icona lucide sia renderizzata
+                    lucide.createIcons(); 
+                } else {
+                    // SU DESKTOP: Mostra iframe
+                    console.log("Rilevato dispositivo desktop, mostro iframe.");
+                    pdfIframe.style.display = 'block';
+                    pdfDownloadContainer.style.display = 'none';
+                    pdfIframe.src = pdfUrl; 
+                }
                 
-                pdfIframe.src = pdfUrl; // NUOVO
+                // Mostra il modal
                 modalPdfPreview.classList.add('active');
                 
                 // Chiudi il modal "Attendere"
                 modalOverlay.classList.remove('active');
+                // *** FINE MODIFICA ***
 
             } catch (error) {
                 console.error("Errore durante la generazione del PDF:", error);
@@ -2858,25 +2905,52 @@
                 }
             });
 
-            // --- NUOVO: Listener per MODAL ANTEPRIMA PDF ---
+            // *** INIZIO MODIFICA ***
+            // --- MODIFICATO: Listener per MODAL ANTEPRIMA PDF (gestisce anche fallback mobile) ---
             const modalPdfPreview = document.getElementById('modal-pdf-preview');
             const modalPdfCloseBtn = document.getElementById('modal-pdf-close-btn');
             const pdfIframe = document.getElementById('pdf-iframe');
+            const pdfDownloadContainer = document.getElementById('pdf-download-mobile-container');
+            const pdfDownloadBtn = document.getElementById('pdf-download-btn');
 
+            // Listener per il pulsante SCARICA (nel modal)
+            pdfDownloadBtn.addEventListener('click', () => {
+                // Recupera il blob e il nome file salvati
+                const blob = pdfDownloadBtn._pdfBlob;
+                const name = pdfDownloadBtn._fileName;
+                
+                if (blob && name) {
+                    console.log(`Avvio download mobile per ${name}`);
+                    saveAs(blob, name); // Usa FileSaver.js
+                } else {
+                    console.error("Blob o fileName non trovati sul pulsante download.");
+                }
+                
+                // Chiudi il modal dopo aver cliccato
+                modalPdfCloseBtn.click();
+            });
+
+            // Listener per il pulsante CHIUDI (X)
             modalPdfCloseBtn.addEventListener('click', () => {
                 modalPdfPreview.classList.remove('active');
                 
-                // --- NUOVO: Revoke URL per liberare memoria ---
+                // Revoke URL dell'iframe (per desktop)
                 const oldUrl = pdfIframe.src;
                 if (oldUrl.startsWith('blob:')) {
                     URL.revokeObjectURL(oldUrl);
                 }
-                // --- FINE NUOVO ---
-
-                // Pulisci l'iframe per liberare memoria
+                
+                // Pulisci l'iframe
                 pdfIframe.src = 'about:blank'; 
+                
+                // Nascondi il container mobile
+                pdfDownloadContainer.style.display = 'none';
+                
+                // Pulisci i dati custom dal bottone download per liberare memoria
+                pdfDownloadBtn._pdfBlob = null;
+                pdfDownloadBtn._fileName = null;
             });
-            // --- FINE NUOVO ---
+            // --- FINE MODIFICA ---
 
 
             // --- PASSO 2: Apri il database e avvia l'app ---
@@ -2902,4 +2976,3 @@
     </script>
 </body>
 </html>
-
