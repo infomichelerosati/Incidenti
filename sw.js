@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sinistri-pwa-cache-v11'; // *** VERSIONE INCREMENTATA A v11 ***
+const CACHE_NAME = 'sinistri-pwa-cache-v12'; // *** VERSIONE INCREMENTATA A v12 ***
 
 // Separiamo gli asset locali da quelli esterni (CDN)
 const LOCAL_URLS = [
@@ -81,7 +81,10 @@ self.addEventListener('fetch', event => {
   // Determina se la richiesta è per una CDN o un asset locale
   const isCdnUrl = CDN_URLS.some(cdnUrl => event.request.url.startsWith(cdnUrl));
   // Per i local URLs, controlliamo il pathname
-  const isLocalUrl = LOCAL_URLS.includes(requestUrl.pathname);
+  // NOTA: Dobbiamo rimuovere lo slash iniziale se presente
+  const requestPath = requestUrl.pathname.startsWith('/') ? '.' + requestUrl.pathname : requestUrl.pathname;
+  
+  const isLocalUrl = LOCAL_URLS.includes(requestPath);
 
   // Per le CDN, usa la cache.
   if (isCdnUrl) {
@@ -96,14 +99,15 @@ self.addEventListener('fetch', event => {
           // Se non in cache, fetch
           const fetchRequest = event.request.clone();
           
-          return fetch(fetchRequest, { mode: 'no-cors' }) // Usa no-cors per CDN
+          // Creiamo una richiesta no-cors per le CDN
+          return fetch(new Request(fetchRequest.url, { mode: 'no-cors' }))
             .then(response => {
                 // Non possiamo mettere in cache la risposta no-cors qui
                 // perché non possiamo clonarla, ma l'installazione dovrebbe averla gestita.
                 return response;
             })
             .catch(err => {
-                console.error('SW: Errore fetch CDN (no-cors)', err);
+                console.error('SW: Errore fetch CDN (no-cors)', err, event.request.url);
             });
         })
     );
@@ -118,6 +122,7 @@ self.addEventListener('fetch', event => {
                     return cachedResponse;
                 }
                 // Se non è in cache, vai alla rete (importante per lo sviluppo)
+                console.warn('SW: Asset locale non in cache, fetch dalla rete:', event.request.url);
                 return fetch(event.request); 
             })
     );
@@ -126,4 +131,3 @@ self.addEventListener('fetch', event => {
   // Per tutto il resto (es. richieste API, se ci fossero), lascia passare
   // return;
 });
-
