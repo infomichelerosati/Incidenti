@@ -834,7 +834,8 @@
         // --- 1. Definizione Database (Modulo 2) ---
         const db = new Dexie('SinistriDB');
 
-        db.version(5).stores({
+        // *** MODIFICA: AGGIUNTA v6 PER p_from e p_to ***
+        db.version(6).stores({
             reports: '++id, dateTime, status', // Tabella Rilievi
             vehicles: '++id, reportId, label', // Veicoli (A, B...)
             people: '++id, reportId, vehicleId, type', // Persone (vehicleId=0 per pedoni)
@@ -842,12 +843,26 @@
             photos: '++id, reportId, category, associatedId', // Foto (category: 'danno', 'doc_veicolo', 'doc_persona', 'scena', 'infra', 'pedone')
             
             // Modulo Planimetria
-            measurePoints: '++id, reportId, [reportId+label], type, associatedVehicleId, isGenerated', // Punti (Indice corretto: [reportId+label])
-            measurements: '++id, reportId, [reportId+p1_label+p2_label], p1_label, p2_label, distance', // Misure inserite
-            suggestedMeasurements: '++id, reportId, [reportId+p1_label+p2_label], p1_label, p2_label, status, type' // Legenda (status: 'pending', 'completed')
+            measurePoints: '++id, reportId, [reportId+label], type, associatedVehicleId, isGenerated', // Punti
+            // MODIFICATO: Aggiunto p_from, p_to. L'indice rimane [reportId+p1_label+p2_label]
+            measurements: '++id, reportId, [reportId+p1_label+p2_label], p1_label, p2_label, p_from, p_to, distance', 
+            suggestedMeasurements: '++id, reportId, [reportId+p1_label+p2_label], p1_label, p2_label, status, type' // Legenda
         
         }).upgrade(tx => {
-            console.log("Database aggiornato alla v5 (Schema Unico e Corretto).");
+            console.log("Database aggiornato alla v6 (Aggiunto p_from, p_to a measurements).");
+            // Non c'è bisogno di migrare i dati vecchi, il fallback gestirà i campi mancanti.
+        });
+
+        // Fallback alla versione precedente se la v6 fallisce (es. utente non aggiorna)
+        db.version(5).stores({
+            reports: '++id, dateTime, status',
+            vehicles: '++id, reportId, label',
+            people: '++id, reportId, vehicleId, type',
+            infrastructure: '++id, reportId, description',
+            photos: '++id, reportId, category, associatedId',
+            measurePoints: '++id, reportId, [reportId+label], type, associatedVehicleId, isGenerated',
+            measurements: '++id, reportId, [reportId+p1_label+p2_label], p1_label, p2_label, distance',
+            suggestedMeasurements: '++id, reportId, [reportId+p1_label+p2_label], p1_label, p2_label, status, type'
         });
 
 
@@ -870,7 +885,7 @@
         const screens = document.querySelectorAll('.screen');
         const appTitle = document.getElementById('app-title');
         const btnBack = document.getElementById('btn-back');
-        const btnBackLabel = document.getElementById('btn-back-label'); // *** CORREZIONE: Rimosso trattino (-) dal nome variabile ***
+        const btnBackLabel = document.getElementById('btn-back-label');
         // const headerSpacer = document.getElementById('header-spacer'); // RIMOSSO
 
         function navigateTo(screenId, context = {}) {
@@ -1027,7 +1042,7 @@
         // Funzione per mostrare un alert
         function showModal(message, title = "Avviso") {
             modalTitle.textContent = title;
-            modalMessage.innerHTML = message.replace(/\n/g, '<br>'); // Supporta newline - CORREZIONE
+            modalMessage.innerHTML = message.replace(/\n/g, '<br>'); // Supporta newline
             modalAlertBtns.style.display = 'flex';
             modalConfirmBtns.style.display = 'none';
             modalOverlay.classList.add('active');
@@ -1045,7 +1060,7 @@
         // Funzione per mostrare una conferma
         function showConfirmModal(message, title = "Conferma") {
             modalTitle.textContent = title;
-            modalMessage.innerHTML = message.replace(/\n/g, '<br>'); // Supporta newline - CORREZIONE
+            modalMessage.innerHTML = message.replace(/\n/g, '<br>'); // Supporta newline
             modalAlertBtns.style.display = 'none';
             modalConfirmBtns.style.display = 'flex';
             modalOverlay.classList.add('active');
@@ -1069,13 +1084,11 @@
             });
         }
 
-        // *** INIZIO MODIFICA: Utility Rilevamento Mobile ***
         // --- 5.5 Utility Rilevamento Mobile ---
         function isMobileDevice() {
             // Un controllo affidabile per la maggior parte dei dispositivi touch mobili
             return (typeof window.orientation !== "undefined") || (navigator.userAgent.indexOf('IEMobile') !== -1);
         }
-        // *** FINE MODIFICA ***
 
         // --- 6. Logica Schermata 1: Home (Modulo 4.2) ---
         const elencoRilievi = document.getElementById('elenco-rilievi');
@@ -1094,7 +1107,6 @@
                         const reportEl = document.createElement('div');
                         reportEl.className = 'neum-card p-4 flex items-center justify-between';
                         
-                        // *** MODIFICATO: Aggiunto pulsante Esporta PDF ***
                         reportEl.innerHTML = `
                             <div class="flex-1 cursor-pointer" data-report-id="${report.id}">
                                 <h3 class="font-bold text-lg text-blue-700">Rilievo #${report.id}</h3>
@@ -1106,7 +1118,7 @@
                                     <i data-lucide="download" class="w-5 h-5"></i>
                                 </button>
                                 
-                                <!-- NUOVO: Pulsante PDF visibile solo se 'completed' -->
+                                <!-- Pulsante PDF visibile solo se 'completed' -->
                                 ${report.status === 'completed' ? `
                                 <button class="btn-export-pdf neum-icon-btn neum-btn-pdf" data-report-id="${report.id}" title="Esporta Riepilogo PDF">
                                     <i data-lucide="file-text" class="w-5 h-5"></i>
@@ -1143,8 +1155,7 @@
                             await exportReportData(id);
                         });
                         
-                        // *** NUOVO: Listener per Esportare PDF ***
-                        // L'optional chaining (?) è fondamentale perché il bottone può non esistere
+                        // Listener per Esportare PDF
                         reportEl.querySelector('.btn-export-pdf')?.addEventListener('click', async (e) => {
                             const id = parseInt(e.currentTarget.getAttribute('data-report-id'));
                             e.stopPropagation(); // Ferma la navigazione
@@ -1218,8 +1229,6 @@
                 });
                 
                 // Inizializza array per le transazioni
-                let vehiclesData = [];
-                let peopleData = [];
                 let pointsData = []; // Punti generati (Modulo 3.3)
 
                 // 2. Prepara Veicoli e Persone
@@ -1310,7 +1319,6 @@
 
         // --- 8. Logica Schermata 3: Dashboard (Modulo 4.4) ---
         const dashboardTitle = document.getElementById('dashboard-title');
-        // const dashboardDatetime = document.getElementById('dashboard-datetime'); // Vecchio <p> rimosso
         const vehiclesList = document.getElementById('dashboard-vehicles-list');
         const infraPedoniList = document.getElementById('dashboard-infra-pedoni-list');
         const legendaList = document.getElementById('dashboard-legenda-list');
@@ -1415,7 +1423,6 @@
                     // Conteggio foto persona
                     const personPhotosCount = await db.photos.where({ reportId: currentReportId, category: 'doc_persona', associatedId: person.id }).count();
                     
-                    // *** INIZIO MODIFICA: Aggiunto bottone elimina passeggero ***
                     peopleHtml += `
                         <li class="flex justify-between items-center">
                             <span class="flex items-center">
@@ -1439,7 +1446,6 @@
                             </div>
                         </li>
                     `;
-                    // *** FINE MODIFICA ***
                 }
                 peopleHtml += '</ul>';
                 
@@ -1489,7 +1495,6 @@
                 });
             });
 
-            // *** INIZIO MODIFICA: Aggiunto listener per eliminare passeggero ***
             vehiclesList.querySelectorAll('.btn-delete-passenger').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
                     e.stopPropagation(); // Evita che il click si propaghi
@@ -1515,7 +1520,6 @@
                     }
                 });
             });
-            // *** FINE MODIFICA ***
 
             // Listener per Aggiungi Passeggero
             vehiclesList.querySelectorAll('.btn-add-passenger').forEach(btn => {
@@ -1751,9 +1755,6 @@
                     </button>
                 `;
                 
-                // Pulisce la URL dell'oggetto (RIMOSSO DA QUI, GESTITO CENTRALMENTE)
-                // thumb.querySelector('img').onload = () => URL.revokeObjectURL(url);
-                
                 // Listener per ELIMINARE foto
                 thumb.querySelector('.delete-photo-btn').addEventListener('click', async (e) => {
                     e.stopPropagation();
@@ -1784,7 +1785,6 @@
             loadPhotoGallery(vehicleId, 'danno', 'vehicle-damage-photos');
             loadPhotoGallery(vehicleId, 'doc_veicolo', 'vehicle-doc-photos');
 
-            // --- MODIFICATO PER GESTIRE CAPTURE E UPLOAD SEPARATI ---
             const inputDamagePhotoCapture = document.getElementById('input-damage-photo-capture');
             const inputDamagePhotoUpload = document.getElementById('input-damage-photo-upload');
             const inputVehicleDocPhotoCapture = document.getElementById('input-vehicle-doc-photo-capture');
@@ -1801,7 +1801,6 @@
 
             inputVehicleDocPhotoUpload.value = null;
             inputVehicleDocPhotoUpload.onchange = (e) => handlePhotoUpload(e.target.files, 'doc_veicolo', vehicleId);
-            // --- FINE MODIFICA ---
         }
         
         // Schermata 5: Foto Persona
@@ -1811,7 +1810,6 @@
             
             loadPhotoGallery(personId, 'doc_persona', 'person-doc-photos');
             
-            // --- MODIFICATO PER GESTIRE CAPTURE E UPLOAD SEPARATI ---
             const inputPersonDocPhotoCapture = document.getElementById('input-person-doc-photo-capture');
             const inputPersonDocPhotoUpload = document.getElementById('input-person-doc-photo-upload');
 
@@ -1820,7 +1818,6 @@
 
             inputPersonDocPhotoUpload.value = null;
             inputPersonDocPhotoUpload.onchange = (e) => handlePhotoUpload(e.target.files, 'doc_persona', personId);
-            // --- FINE MODIFICA ---
         }
         
         // Schermata 6: Foto Generiche
@@ -1831,7 +1828,6 @@
             
             loadPhotoGallery(associatedId, category, 'generic-photos-grid');
             
-            // --- MODIFICATO PER GESTIRE CAPTURE E UPLOAD SEPARATI ---
             const inputGenericPhotoCapture = document.getElementById('input-generic-photo-capture');
             const inputGenericPhotoUpload = document.getElementById('input-generic-photo-upload');
             
@@ -1840,7 +1836,6 @@
 
             inputGenericPhotoUpload.value = null;
             inputGenericPhotoUpload.onchange = (e) => handlePhotoUpload(e.target.files, category, associatedId);
-            // --- FINE MODIFICA ---
         }
         
         // --- 10. Logica Schermata 7: Punti (Modulo 4.11) ---
@@ -2116,14 +2111,19 @@
             
             if (measures.length > 0) {
                 measuresList.innerHTML = '';
-                // Ordina per etichetta
-                measures.sort((a,b) => a.p1_label.localeCompare(b.p1_label) || a.p2_label.localeCompare(b.p2_label));
+                // Ordina per etichetta (usa p_from o p1_label come fallback)
+                measures.sort((a,b) => 
+                    (a.p_from || a.p1_label).localeCompare(b.p_from || b.p1_label) || 
+                    (a.p_to || a.p2_label).localeCompare(b.p_to || b.p2_label)
+                );
 
                 measures.forEach(m => {
+                    const p_from = m.p_from || m.p1_label; // Fallback per vecchi dati
+                    const p_to = m.p_to || m.p2_label;   // Fallback per vecchi dati
                     const el = document.createElement('div');
                     el.className = 'flex justify-between items-center p-3 rounded-lg';
                     el.innerHTML = `
-                        <span class="font-medium">${m.p1_label} &mdash; ${m.p2_label}</span>
+                        <span class="font-medium">${p_from} &mdash; ${p_to}</span>
                         <span class="font-bold text-blue-700">${m.distance.toFixed(2)} m</span>
                         <button class="neum-icon-btn neum-btn-danger btn-delete-measure" data-measure-id="${m.id}" data-p1="${m.p1_label}" data-p2="${m.p2_label}">
                             <i data-lucide="trash-2" class="w-5 h-5"></i>
@@ -2150,6 +2150,7 @@
             }
         }
         
+        // *** MODIFICA: Aggiunto controllo sovrascrittura ***
         async function saveMeasure() {
             const p1 = selectP1.value;
             const p2 = selectP2.value;
@@ -2164,16 +2165,41 @@
                 return;
             }
             
-            // Normalizza (es. A-B è uguale a B-A)
+            // Normalizza per la chiave (es. A-B è uguale a B-A)
             const [label1, label2] = [p1, p2].sort();
             
             try {
-                // Usiamo put() con l'indice [reportId+p1_label+p2_label] per fare "upsert"
-                // Se la misura A-B esiste, la sovrascrive.
+                // --- NUOVO CONTROLLO ---
+                // 1. Controlla se la misura esiste già
+                const existing = await db.measurements
+                    .where({ reportId: currentReportId, p1_label: label1, p2_label: label2 })
+                    .first();
+
+                if (existing) {
+                    // 2. Se esiste, chiedi conferma
+                    // Usa p_from/p_to se esistono, altrimenti i vecchi p1/p2
+                    const p_from_old = existing.p_from || existing.p1_label;
+                    const p_to_old = existing.p_to || existing.p2_label;
+                    const oldDistance = existing.distance.toFixed(2);
+                    
+                    const confirmed = await showConfirmModal(
+                        `Esiste già una misura tra questi punti:\n${p_from_old} — ${p_to_old} : ${oldDistance} m\n\nVuoi sovrascriverla con la nuova misura (${distance.toFixed(2)} m)?`,
+                        "Misura Esistente"
+                    );
+                    
+                    if (!confirmed) {
+                        return; // L'utente ha annullato
+                    }
+                }
+                // --- FINE NUOVO CONTROLLO ---
+
+                // 3. Salva (o sovrascrivi)
                 await db.measurements.put({
                     reportId: currentReportId,
-                    p1_label: label1,
-                    p2_label: label2,
+                    p1_label: label1, // Chiave ordinata
+                    p2_label: label2, // Chiave ordinata
+                    p_from: p1,       // Punto "Da" selezionato dall'utente
+                    p_to: p2,         // Punto "A" selezionato dall'utente
                     distance: distance
                 });
                 
@@ -2377,7 +2403,11 @@
 
                 // Sezione 4: Planimetria
                 points.sort((a, b) => a.label.localeCompare(b.label));
-                measures.sort((a,b) => a.p1_label.localeCompare(b.p1_label) || a.p2_label.localeCompare(b.p2_label));
+                // *** MODIFICA: Ordinamento p_from / p_to ***
+                measures.sort((a,b) => 
+                    (a.p_from || a.p1_label).localeCompare(b.p_from || b.p1_label) || 
+                    (a.p_to || a.p2_label).localeCompare(b.p_to || b.p2_label)
+                );
 
                 html += `
                     <section class="summary-section">
@@ -2395,7 +2425,8 @@
                         <div class="neum-card-inset p-3 rounded-lg">
                         ${measures.map(m => `
                             <div class="summary-data-pair">
-                                <span>${m.p1_label} &mdash; ${m.p2_label}</span>
+                                <!-- *** MODIFICA: Usa p_from / p_to *** -->
+                                <span>${m.p_from || m.p1_label} &mdash; ${m.p_to || m.p2_label}</span>
                                 <span>${m.distance.toFixed(2)} m</span>
                             </div>
                         `).join('')}
@@ -2526,7 +2557,11 @@
             console.log("Preparo testo legenda misure...");
             
             const measures = await db.measurements.where({ reportId }).toArray();
-            measures.sort((a,b) => a.p1_label.localeCompare(b.p1_label) || a.p2_label.localeCompare(b.p2_label));
+            // *** MODIFICA: Ordinamento p_from / p_to ***
+            measures.sort((a,b) => 
+                (a.p_from || a.p1_label).localeCompare(b.p_from || b.p1_label) || 
+                (a.p_to || a.p2_label).localeCompare(b.p_to || b.p2_label)
+            );
 
             const points = await db.measurePoints.where({ reportId }).toArray();
             const pointsMap = new Map(points.map(p => [p.label, `(${p.type})`]));
@@ -2539,10 +2574,13 @@
                 text += "Nessuna misura rilevata.\n";
             } else {
                 measures.forEach(m => {
-                    const p1_type = pointsMap.get(m.p1_label) || '';
-                    const p2_type = pointsMap.get(m.p2_label) || '';
+                    // *** MODIFICA: Usa p_from / p_to ***
+                    const p_from = m.p_from || m.p1_label;
+                    const p_to = m.p_to || m.p2_label;
+                    const p1_type = pointsMap.get(p_from) || ''; // Usa p_from
+                    const p2_type = pointsMap.get(p_to) || '';   // Usa p_to
                     // Formato pulito per copia-incolla
-                    text += `${m.p1_label.padEnd(12)} ${p1_type.padEnd(10)} ---  ${m.p2_label.padEnd(12)} ${p2_type.padEnd(10)} :  ${m.distance.toFixed(2)} m\n`;
+                    text += `${p_from.padEnd(12)} ${p1_type.padEnd(10)} ---  ${p_to.padEnd(12)} ${p2_type.padEnd(10)} :  ${m.distance.toFixed(2)} m\n`;
                 });
             }
             
@@ -2810,14 +2848,21 @@
                 y += 5; // Spazio
                 
                 addTitle(`Misure Rilevate (${measures.length})`, 2);
-                measures.sort((a,b) => a.p1_label.localeCompare(b.p1_label) || a.p2_label.localeCompare(b.p2_label));
+                // *** MODIFICA: Ordinamento p_from / p_to ***
+                measures.sort((a,b) => 
+                    (a.p_from || a.p1_label).localeCompare(b.p_from || b.p1_label) || 
+                    (a.p_to || a.p2_label).localeCompare(b.p_to || b.p2_label)
+                );
                 checkPageBreak(measures.length * (lineSpacing / 1.5));
                 doc.setFontSize(9);
                 doc.setFont('courier', 'normal'); // Monospace per allineamento
                 
                 for (const m of measures) {
+                    // *** MODIFICA: Usa p_from / p_to ***
+                    const p_from = m.p_from || m.p1_label;
+                    const p_to = m.p_to || m.p2_label;
                     checkPageBreak(lineSpacing / 2); // Più compatto
-                    let line = `${m.p1_label.padEnd(15)} -- ${m.p2_label.padEnd(15)} : ${m.distance.toFixed(2)} m`;
+                    let line = `${p_from.padEnd(15)} -- ${p_to.padEnd(15)} : ${m.distance.toFixed(2)} m`;
                     doc.text(line, margin + 5, y);
                     y += (lineSpacing / 1.8);
                 }
@@ -2876,7 +2921,6 @@
                     }
                 }
 
-                // *** INIZIO MODIFICA ***
                 // 5. Salva il PDF e gestisci l'anteprima
                 const pdfBlob = doc.output('blob');
                 const pdfUrl = URL.createObjectURL(pdfBlob); // URL per desktop
@@ -2912,7 +2956,6 @@
                 
                 // Chiudi il modal "Attendere"
                 modalOverlay.classList.remove('active');
-                // *** FINE MODIFICA ***
 
             } catch (error) {
                 console.error("Errore durante la generazione del PDF:", error);
@@ -2992,7 +3035,6 @@
                 }
             });
 
-            // *** INIZIO MODIFICA ***
             // --- MODIFICATO: Listener per MODAL ANTEPRIMA PDF (gestisce anche fallback mobile) ---
             const modalPdfPreview = document.getElementById('modal-pdf-preview');
             const modalPdfCloseBtn = document.getElementById('modal-pdf-close-btn');
@@ -3063,3 +3105,4 @@
     </script>
 </body>
 </html>
+
