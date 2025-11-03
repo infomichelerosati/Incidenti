@@ -64,6 +64,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            text-decoration: none; /* Aggiunto per tag <a> */
         }
         .neum-btn:hover {
             box-shadow: 4px 4px 8px #c5c9cf, -4px -4px 8px #ffffff;
@@ -417,6 +418,16 @@
                 <i data-lucide="plus-circle" class="w-6 h-6 mr-2"></i>
                 Nuova Acquisizione
             </button>
+            
+            <!-- *** INIZIO MODIFICA: Pulsante Schizzo Planimetrico *** -->
+            <a href="https://infomichelerosati.github.io/canvaspersinistri/" 
+               id="btn-new-sketch"
+               class="neum-btn neum-btn-primary w-full text-lg py-5 flex items-center justify-center" 
+               target="_blank" rel="noopener noreferrer">
+                <i data-lucide="edit-3" class="w-6 h-6 mr-2"></i>
+                + nuovo schizzo planimetrico
+            </a>
+            <!-- *** FINE MODIFICA *** -->
             
             <div class="neum-card-inset p-4">
                 <h2 class="text-lg font-bold mb-4 text-center">Rilievi in Corso</h2>
@@ -3105,4 +3116,3 @@
     </script>
 </body>
 </html>
-
